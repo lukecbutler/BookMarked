@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS Patron (
+    PatronID INT PRIMARY KEY,
+    FName VARCHAR(50),
+    LName VARCHAR(50)
+);
+
+CREATE TABLE IF NOT EXISTS Book (
+    BookID INT PRIMARY KEY,
+    BookTitle VARCHAR(100),
+    AuthFName VARCHAR(50),
+    AuthLName VARCHAR(50)
+);
+
+CREATE TABLE IF NOT EXISTS Checkout (
+    PatronID INT,
+    BookID INT,
+    FOREIGN KEY (PatronID) REFERENCES Patron(PatronID),
+    FOREIGN KEY (BookID) REFERENCES Book(BookID)
+    PRIMARY KEY (PatronID, BookID)
+);
+
