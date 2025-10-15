@@ -1,0 +1,24 @@
+Known Issues / Bugs
+1. Duplicate Patron ID Causes Crash
+
+Description: When a user tries to add a Patron with an existing PatronID, the application crashes with an sqlalchemy.exc.IntegrityError instead of showing a friendly validation message.
+
+Steps to Reproduce:
+
+Run the application (python App.py).
+
+Go to the "Add Patron" page.
+
+Enter an existing PatronID (for example: 8596).
+
+Click Submit.
+
+Expected Result: The system should display a user-friendly message such as “Patron ID already exists. Please use a unique ID.”
+
+Actual Result: Application crashes and displays a technical error traceback (IntegrityError).
+
+Severity: Medium
+
+Status: ❌ Open
+
+Suggested Fix: Add input validation or a try-except block in the backend before inserting new patrons into the database.
