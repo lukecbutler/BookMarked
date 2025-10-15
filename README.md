@@ -45,7 +45,7 @@ Deliver a working **“Hello World” application** hosted on **PythonAnywhere**
 **patrons**  
 - patronID (PK)  
 - fName  
-- lName  
+- lName
 
 ---
 
@@ -83,3 +83,4 @@ Deliver a working **“Hello World” application** hosted on **PythonAnywhere**
 - Document sprint backlog in the planning tool (e.g., Jira, Trello, GitHub Projects)  
 
 ---
+d
