@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="script.js"></script>
+
+    <style>
+        /*
+      Form Group Styles
+      Page: All
+     */
+     .form-group {
+       margin-top: 20px;
+       margin-bottom: 20px;
+     }
+   
+     /*
+      Label Styles
+      Page: All
+     */
+     label {
+       display: block;
+       font-weight: bold;
+       margin-bottom: 5px;
+     }
+   
+     /*
+      Input Styles
+      Page: All
+     */
+     input,
+     select {
+       width: 26%;
+       padding: 8px;
+       margin-top: 5px;
+       margin-bottom: 10px;
+       border: 1px solid #ddd;
+       border-radius: 4px;
+       box-sizing: border-box;
+     }
+     /*
+      Submit Button Styles
+      Page: All
+     */
+     #checkout {
+       background-color: teal;
+       color: white;
+       border: none;
+       width: 14%;
+       padding: 15px 30px;
+       cursor: pointer;
+       font-size: 16px;
+       font-weight: bold;
+       border-radius: 5px;
+       transition: background-color 0.3s, color 0.3s;
+     }
+   
+     #checkout:hover {
+       background-color: gold;
+       color: teal;
+     }
+     #printReceipt {
+       background-color: teal;
+       color: white;
+       border: none;
+       padding: 15px 30px;
+       cursor: pointer;
+       font-size: 16px;
+       font-weight: bold;
+       border-radius: 5px;
+       transition: background-color 0.3s, color 0.3s;
+     }
+   
+     #printReceipt:hover {
+       background-color: gold;
+       color: teal;
+     }
+   </style>
+
+    <title>Wayback Public Library - Library Check Out</title>
+</head>
+<body>
+<header>
+    <h1>Welcome to Wayback Public Library</h1>
+    <p>Your Gateway to Knowledge</p>
+</header>
+<nav>
+    <ul>
+        <li><a href="home.html">Home</a></li>
+        <li><a href="index.html">Patron Management</a></li>
+        <li><a href="catalog.html">Catalog</a></li>
+        <li><a href="checkin.html">Check In</a></li>
+        <li><a href="checkout.html">Check Out</a></li>
+        <li><a href="latefees.html">Late Fees</a></li>
+        <li><a href="putback.html">Put Item Back</a></li>
+    </ul>
+</nav>
+<main>
+    <h1>Library Checkout</h1>
+    <form id="checkoutForm" action="checkout.php" method="post">
+        <div class="form-group">
+         <label for="itemID">Item ID:</label>
+         <select id="itemID" name="itemID" required onchange="updateDueDate()">
+            <!-- Options will be dynamically populated using JavaScript -->
+         </select>
+         <br><br>
+
+         <!-- Patron ID Dropdown -->
+         <label for="patronID">Patron ID:</label>
+         <select id="patronID" name="patronID" required>
+            <!-- Options will be dynamically populated using JavaScript -->
+         </select>
+         <br><br>
+
+         <label for="checkoutDate">Check Out Date:</label>
+         <input type="date" id="checkoutDate" name="checkoutDate" required>
+         <br><br>
+
+         <label for="dueDate">Due Date:</label>
+         <input type="date" id="dueDate" name="dueDate" required>
+         <br><br>
+
+         <input type="submit" id="checkout" value="Check Out">
+         <button id="printReceipt">Print Receipt</button>
+        </div>
+    </form>
+
+
+</main>
+<footer>
+    <p>&copy; 2023 Wayback Public Library</p>
+</footer>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const checkoutDateInput = document.getElementById('checkoutDate');
+        const today = new Date();
+        
+        today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+        
+        const formattedDate = today.toISOString().split('T')[0];
+        checkoutDateInput.value = formattedDate;
+    });
+    
+    function updateDueDate() {
+        var itemID = document.getElementById('itemID').value;
+
+        $.ajax({
+            type: 'POST',
+            url: 'getDuration.php',
+            data: { itemID: itemID },
+            success: function (response) {
+                var duration = JSON.parse(response).duration;
+                var checkoutDate = new Date(document.getElementById('checkoutDate').value);
+                checkoutDate.setDate(checkoutDate.getDate() + duration);
+                var formattedDueDate = checkoutDate.toISOString().split('T')[0];
+
+                document.getElementById('dueDate').value = formattedDueDate;
+            },
+            error: function () {
+                console.error('Error fetching duration for item ID ' + itemID);
+            }
+        });
+    }
+</script>
+<script src="additional_script.js"></script>
+<script>
+    $(document).ready(function () {
+        function generateReceipt() {
+            var itemID = $("#itemID").val();
+            var patronID = $("#patronID").val();
+            var checkoutDate = $("#checkoutDate").val();
+            var dueDate = $("#dueDate").val();
+
+            var receiptContent = "Item ID: " + itemID + "<br>" +
+                "Patron ID: " + patronID + "<br>" +
+                "Check Out Date: " + checkoutDate + "<br>" +
+                "Due Date: " + dueDate;
+
+            var receiptWindow = window.open('', '_blank', 'width=300,height=400,scrollbars=yes,resizable=yes');
+            receiptWindow.document.write('<html><head><title>Receipt</title></head><body>' + receiptContent +
+                '<br><button id="printBtn">Print</button>' +
+                '<button id="closeBtn">Close</button>' +
+                '</body></html>');
+            receiptWindow.document.close();
+
+            receiptWindow.document.getElementById('printBtn').addEventListener('click', function () {
+                receiptWindow.print();
+            });
+
+            receiptWindow.document.getElementById('closeBtn').addEventListener('click', function () {
+                receiptWindow.close();
+            });
+        }
+
+        $("#printReceipt").click(function () {
+            generateReceipt();
+        });
+    });
+</script>
+</body>
+</html>

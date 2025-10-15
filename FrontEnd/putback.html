@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <script src="script.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <title>Wayback Public Library - Put Back Items</title>
+</head>
+<body>
+
+<header>
+    <h1>Welcome to Wayback Public Library</h1>
+    <p>Your Gateway to Knowledge</p>
+</header>
+
+<nav>
+    <ul>
+        <li><a href="home.html">Home</a></li>
+        <li><a href="index.html">Patron Management</a></li>
+        <li><a href="catalog.html">Catalog</a></li>
+        <li><a href="checkin.html">Check In</a></li>
+        <li><a href="checkout.html">Check Out</a></li>
+        <li><a href="latefees.html">Late Fees</a></li>
+        <li><a href="putback.html">Put Item Back</a></li>
+    </ul>
+</nav>
+
+<main>
+    <section class="home">
+        <!-- Display the table here -->
+        <div id="putbackTableContainer"></div>
+
+        <!-- Include the JavaScript to fetch and display the table -->
+        <script>
+            // Use jQuery to fetch and display the table
+            $(document).ready(function () {
+                $.ajax({
+                    url: 'putback_table.php',
+                    type: 'GET',
+                    success: function (data) {
+                        // Inject the table into the container div
+                        $('#putbackTableContainer').html(data);
+
+                        // Attach click event to checkboxes
+                        $('.putBackCheckbox').on('click', function () {
+                            var itemID = $(this).data('itemid');
+                            var checkbox = $(this);
+
+                            // Call the update script when a checkbox is clicked
+                            $.ajax({
+                                url: 'update_putback.php',
+                                type: 'POST',
+                                data: {itemID: itemID},
+                                success: function (response) {
+                                    // Display a user-friendly success message in green
+                                    var successMessage = '<div class="success-message" style="background-color: #d4edda; border-color: #c3e6cb; color: #155724; padding: .75rem 1.25rem; border-radius: .25rem; margin-top: 10px;">Item Put Back Successfully!</div>';
+                                    checkbox.closest('tr').after(successMessage);
+
+                                    // Hide the row after updating
+                                    checkbox.closest('tr').hide();
+
+                                    // Hide the success message after a few seconds
+                                    setTimeout(function () {
+                                        checkbox.closest('tr').next().remove(); // Remove the success message
+                                    }, 3000);
+                                },
+                                error: function () {
+                                    console.log('Error updating item.');
+                                }
+                            });
+                        });
+                    },
+                    error: function () {
+                        console.log('Error fetching table data.');
+                    }
+                });
+            });
+        </script>
+    </section>
+</main>
+
+<footer class="site-footer">
+    <p>&copy; 2023 Wayback Public Library</p>
+</footer>
+
+</body>
+</html>

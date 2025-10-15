@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="script.js"></script>
+    <title>Wayback Public Library</title>
+<body>
+  
+<header>
+    <h1>Welcome to Wayback Public Library</h1>
+    <p>Your Gateway to Knowledge</p>
+</header>
+<nav>
+  <ul>
+    <li><a href="home.html">Home</a></li>
+    <li><a href="index.html">Patron Management</a></li>
+    <li><a href="catalog.html">Catalog</a></li>
+    <li><a href="checkin.html">Check In</a></li>
+    <li><a href="checkout.html">Check Out</a></li>
+    <li><a href="latefees.html">Late Fees</a></li>
+    <li><a href="putback.html">Put Item Back</a></li>
+  </ul>
+</nav>
+<main>
+    <section class="home">
+        <!-- add content here later -->
+            <p>
+                <h2>Late Fee</h2>
+                <br></br>
+                <form id="lateFeeForm">
+                <div class="form-group">
+                 <label for="patronId">Select Patron:</label>
+                 <select id="patronId" onchange="displayLateFee()">
+                  <option value="1">Select</option> 
+                  <option value="2">Michael Brown</option>
+                  <option value="3">JUST A TEST JUST A TEST</option>
+                  <option value="4">SophiaMartinez</option>
+                  <option value="5">Benjami Turner</option>
+                  <option value="6">James	White</option>
+                  <option value="7">Ava Turner</option>
+                  <option value="8">TEST TEST</option>
+                  <option value="9">Joe Jones</option>
+                  <option value="10">Kelsey Smith</option>
+                  <option value="11">Xander Shadowstrike</option>
+                  <option value="12">Judith Gebauer</option>
+                  <option value="13">Olivia Anderson</option>
+                  <option value="14">Sarah Johnson</option>
+                  <option value="15">Orion Frostbane</option>
+                  <option value="16">David Lee</option>
+                  <option value="17">Emma	King</option>
+                  <option value="18">James Johnson</option>
+                  <option value="19">Lyra Nightwatcher</option>
+                  <option value="20">Nova Fireheart</option>
+                  <option value="21">Oliver Harris</option>
+                  <option value="22">Samuel Cooper</option>
+                  <option value="23">William Harris</option>
+                  <option value="24">Nick	Williams</option>
+                  <option value="25">Aurora Starlight</option>
+                  <option value="26">Lily	Martinez</option>
+                  <option value="27">Lysandra Silverleaf</option>
+                  <option value="28">Charlotte Wright</option>
+                  <option value="29">Grace Wilson</option>
+                  <option value="30">Seraphina Moonshadow</option>
+                  <option value="31">Mia Perez</option>
+                  <option value="32">Ethan Johnson 1</option>
+                  <option value="33">Emily Clark</option>
+                 <option value="34">Daniel Rodriguez</option>
+                 </select>
+                 <br></br>
+                 <label for="lateFee">Late Fee Amount:</label>
+                 <input type="text" id="lateFee" readonly>
+                 <br></br>
+                 <label for="paymentAmount">Enter Payment Amount:</label>
+                 <input type="number" id="paymentAmount" min="0" required>
+                 <br></br>
+                </div>                
+                <div class="buttons-container">
+                <button type="button" onclick="payLateFees()">Pay Late Fees</button>
+                </div>
+                <script>
+                    function buttonClick(buttonNumber) {
+                      alert('Button ' + buttonNumber + ' clicked!');
+                    }
+                </script>                
+              </form>
+              <div id="receipt"></div>
+              
+              <script>
+                function calculateLateFee() {
+                  var dueDate = new Date(document.getElementById('dueDate').value);
+                  var currentDate = new Date(document.getElementById('currentDate').value);
+                  var timeDiff = currentDate - dueDate;
+                  var daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                  var lateFeePerDay = 0.75; 
+                  var lateFee = daysDiff > 0 ? daysDiff * lateFeePerDay : 0;
+                  document.getElementById('result').innerHTML = '<p>Late Fee: $' + lateFee.toFixed(2) + '</p>';
+                }
+              </script>
+              <script>
+                function displayLateFee() {
+                 
+                  var patronId = document.getElementById('patronId').value;
+                  var lateFee = getLateFeeForPatron(patronId);
+                  document.getElementById('lateFee').value = lateFee.toFixed(2);
+                }
+            
+                function payLateFees() {
+                  var patronId = document.getElementById('patronId').value;
+                  var paymentAmount = parseFloat(document.getElementById('paymentAmount').value);
+                  var receipt = payLateFeesForPatron(patronId, paymentAmount);
+            
+                
+                  document.getElementById('receipt').innerHTML = '<p>' + receipt + '</p>';
+                  
+                  
+                  document.getElementById('lateFeeForm').reset();
+                }
+                function getLateFeeForPatron(patronId) {
+                  return;
+                }
+            
+                function payLateFeesForPatron(patronId, paymentAmount) {
+                  var remainingLateFees = 0.00; 
+                  return 'Payment of $' + paymentAmount.toFixed(2) + ' received. Remaining late fees: $' + remainingLateFees.toFixed(2);
+                }
+              </script>
+            </p>
+    </section>
+    <div class="buttons-container">
+    </div>
+</main>
+<style>
+  .form-group {
+    margin-top: 20px;
+    margin-bottom: 20px;
+ }
+
+ /*
+   Label Styles
+   Page: All
+ */
+ label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+ }
+
+ /*
+   Input Styles
+   Page: All
+ */
+ input,
+ select {
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+ }
+</style>
+
+<footer class="site-footer">
+    <p>&copy; 2023 Wayback Public Library</p>
+</footer>
+</body>
+</html>
+
