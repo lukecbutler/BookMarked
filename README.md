@@ -17,7 +17,6 @@ Deliver a working **“Hello World” application** hosted on **PythonAnywhere**
 ## Product Backlog Sheets Link
 https://docs.google.com/spreadsheets/d/1PP7BaWFrvVPpQxypPUI-oNMLrsI0S1pPE7Cr69k_eeM/edit?gid=0#gid=0
 
-
 ## 📋 Sprint Backlog (Sprint 0)
 - Set up canonical schema and ingestion scripts  
 - Create validation tests and documentation  
