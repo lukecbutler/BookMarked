@@ -13,16 +13,15 @@
 ## 1. Patron and Membership Management
 
 - **1.1**: As a librarian, I want to enroll a new patron and issue a library card so that the patron can check out items. [spint1]
-
-- **1.2**: As a librarian, I want to renew an expired library card so that a patron can continue borrowing items. 
-- **1.3**: As a librarian, I want to view a patron’s current fines and number of checked-out items during checkout so that I can enforce borrowing rules.
+- **1.2**: As a librarian, I want to view a patron’s current fines and number of checked-out items during checkout so that I can enforce borrowing rules. [sprint2]
+- **1.3**: As a librarian, I want to renew an expired library card so that a patron can continue borrowing items. 
 
 ---
 
 ## 2. Checkout Process
 
 - **2.1**: As a librarian, I want to scan an item and check it out to a patron so that I can process loans efficiently. [sprint1]
-- **2.2**: As a librarian, I want the system to automatically calculate the due date so that I no longer need to stamp it manually.  
+- **2.2**: As a librarian, I want the system to automatically calculate the due date so that I no longer need to stamp it manually. [sprint2]  
 - **2.3**: As a librarian, I want the system to deactivate theft protection on an item after successful checkout so that patrons can exit without triggering alarms.
 
 ---
