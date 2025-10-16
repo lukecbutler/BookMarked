@@ -45,7 +45,7 @@
 
 ## 5. Fines and Overdue Management
 
-- **5.1**: As a librarian, I want to view and manage patron fines so that I can collect overdue payments.  
+- **5.1**: As a librarian, I want to view and manage patron fines so that I can collect overdue payments.  [sprint2]
 - **5.2**: As a librarian, I want the system to block checkout for patrons with unpaid fines above a threshold so that we enforce policy.
 
 ---
