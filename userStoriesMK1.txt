@@ -14,4 +14,3 @@ USER STORIES / Requirements:
 13. As a librarian, I am able to check which branch the item was returned to
 14. As a librarian, I am able to see if an overdue library book results in a fines
 15. As a librarian, I am able to change a books location from one branch to another
-
