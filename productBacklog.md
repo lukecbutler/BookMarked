@@ -19,8 +19,9 @@ SPRINT 3
 As a libarian, I can check which branch the book belongs to
 As I librarian I am able to renew a patrons library card / membership 
 As a librarian, I can ensure the patron's membership is active 
-"As a librarian, I am able to change a books location from one branch to another 
-"
+As a librarian, I am able to change a books location from one branch to another 
 As a librarian, I want to view reports on checkouts, returns, fines, and patron activity. 
+
+
 Product Backlog:
 https://docs.google.com/spreadsheets/d/1PP7BaWFrvVPpQxypPUI-oNMLrsI0S1pPE7Cr69k_eeM/edit?gid=0#gid=0
