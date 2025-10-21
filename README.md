@@ -1,27 +1,29 @@
+# LINKS:
+Product Backlog:
+https://docs.google.com/spreadsheets/d/1PP7BaWFrvVPpQxypPUI-oNMLrsI0S1pPE7Cr69k_eeM/edit?gid=0#gid=0
+
+Trello:
+https://trello.com/b/2aiERKs0
+
+
+
 # BookMarked
 Systems Analysis library management system
 
-# 📌 Sprint Planning Summary
 
-This document summarizes the outcome of our sprint planning meeting, aligned with [Atlassian’s sprint planning guidelines](https://www.atlassian.com/agile/scrum/sprint-planning).
-
----
-
-## 🎯 Sprint Goal
+## 🎯 Sprint 0 Goal
 Deliver a working **“Hello World” application** hosted on **PythonAnywhere**, along with:
-- A release plan  
-- Shared database diagrams  
-- Initial backlog setup  
-
----
-## Product Backlog Sheets Link
-https://docs.google.com/spreadsheets/d/1PP7BaWFrvVPpQxypPUI-oNMLrsI0S1pPE7Cr69k_eeM/edit?gid=0#gid=0
+- A release plan
+- Initial backlog setup 
 
 ## 📋 Sprint Backlog (Sprint 0)
-- Set up canonical schema and ingestion scripts  
-- Create validation tests and documentation  
-- Build initial front-end and back-end scaffolding  
-- Produce diagrams to prevent reverse engineering later  
+- As a librarian, I want to add a new patron's details (name, address, contact) into the system.
+    1. A new patron record (ID, First Name, Last Name) is created and saved into the system.
+- As a librarian, I want to be able to view existing patron's.
+    1. I can view existing patrons in the system.
+    2. The system displays the patron's ID's & Name.
+
+- Build initial front-end and back-end scaffolding 
 - Define at least one **user story** with clear **acceptance criteria**  
 
 ---
@@ -66,11 +68,6 @@ https://docs.google.com/spreadsheets/d/1PP7BaWFrvVPpQxypPUI-oNMLrsI0S1pPE7Cr69k_
 
 ---
 
-## 📥 Inputs
-- Draft backlog  
-- Schema design  
-- Hosting decision  
-
 ## 📤 Outputs
 - Sprint Goal: “Hello World” + release plan  
 - Sprint Backlog: Tasks distributed across team members  
@@ -79,13 +76,3 @@ https://docs.google.com/spreadsheets/d/1PP7BaWFrvVPpQxypPUI-oNMLrsI0S1pPE7Cr69k_
 ---
 
 ## 🚀 Next Steps
-- Confirm **Product Owner** and **Scrum Master** roles  
-- Refine **user stories** with acceptance criteria  
-- Estimate effort (story points or t-shirt sizing)  
-- Document sprint backlog in the planning tool (e.g., Jira, Trello, GitHub Projects)  
-
----
-
-
-Product backlog:
-https://docs.google.com/spreadsheets/d/1PP7BaWFrvVPpQxypPUI-oNMLrsI0S1pPE7Cr69k_eeM/edit?gid=0#gid=0
