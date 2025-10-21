@@ -2,18 +2,17 @@ from flask import Flask, request, jsonify, render_template_string
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
-
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 
 database = SQLAlchemy(app)
 
 class Patron(database.Model):
-    PatronID = database.Column(database.Integer, primary_key = True)
+    PatronID = database.Column(database.Integer, primary_key=True)
     FName = database.Column(database.String(50))
     LName = database.Column(database.String(50))
 
 class Book(database.Model):
-    BookID = database.Column(database.Integer, primary_key = True)
+    BookID = database.Column(database.Integer, primary_key=True)
     BookTitle = database.Column(database.String(100))
     AuthFName = database.Column(database.String(50))
     AuthLName = database.Column(database.String(50))
@@ -47,67 +46,108 @@ def home():
                 table { margin-top: 40px; border-collapse: collapse; width: 100%; background: white; }
                 th, td { padding: 10px; border-bottom: 1px solid #ddd; text-align: left; }
                 th { background-color: #4CAF50; color: white; }
+                #message { margin-top: 10px; color: green; }
             </style>
         </head>
         <body>
             <h1>Library Patron Management</h1>
 
-            <form action="/add" method="POST">
+            <form id="patronForm">
                 <h3>Add New Patron</h3>
-                <input type="number" name="patronID" placeholder="Patron ID" required>
-                <input type="text" name="fname" placeholder="First Name" required>
-                <input type="text" name="lname" placeholder="Last Name" required>
+                <input type="number" id="patronID" placeholder="Patron ID" required>
+                <input type="text" id="fname" placeholder="First Name" required>
+                <input type="text" id="lname" placeholder="Last Name" required>
                 <button type="submit">Add Patron</button>
+                <div id="message"></div>
             </form>
 
             <h2>Current Patrons</h2>
-            {% if patrons %}
-            <table>
-                <tr>
-                    <th>ID</th>
-                    <th>First Name</th>
-                    <th>Last Name</th>
-                </tr>
-                {% for p in patrons %}
-                <tr>
-                    <td>{{ p.PatronID }}</td>
-                    <td>{{ p.FName }}</td>
-                    <td>{{ p.LName }}</td>
-                </tr>
-                {% endfor %}
+            <table id="patronTable">
+                <thead>
+                    <tr><th>ID</th><th>First Name</th><th>Last Name</th></tr>
+                </thead>
+                <tbody>
+                    {% for p in patrons %}
+                    <tr>
+                        <td>{{ p.PatronID }}</td>
+                        <td>{{ p.FName }}</td>
+                        <td>{{ p.LName }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
             </table>
-            {% else %}
-            <p>No patrons found.</p>
-            {% endif %}
+
+            <script>
+                // Load patrons dynamically
+                function loadPatrons() {
+                    fetch('/patrons')
+                        .then(res => res.json())
+                        .then(data => {
+                            const tbody = document.querySelector('#patronTable tbody');
+                            tbody.innerHTML = '';
+                            data.forEach(p => {
+                                const row = document.createElement('tr');
+                                row.innerHTML = `<td>${p.ID}</td><td>${p.fname}</td><td>${p.lname}</td>`;
+                                tbody.appendChild(row);
+                            });
+                        });
+                }
+
+                // Handle adding patron via Fetch API
+                document.getElementById('patronForm').addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const patronData = {
+                        patronID: document.getElementById('patronID').value,
+                        fname: document.getElementById('fname').value,
+                        lname: document.getElementById('lname').value
+                    };
+
+                    fetch('/add', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(patronData)
+                    })
+                    .then(res => res.json())
+                    .then(response => {
+                        document.getElementById('message').textContent = response.message;
+                        document.getElementById('patronForm').reset();
+                        loadPatrons();
+                    })
+                    .catch(err => console.error('Error:', err));
+                });
+
+                // Initial load
+                loadPatrons();
+            </script>
         </body>
         </html>
     ''', patrons=patrons)
 
+
 @app.route('/add', methods=['POST'])
 def add_patron():
-    # Works for both form submissions and JSON
-    if request.is_json:
-        data = request.get_json()
-        patron_id = data.get('patronID')
-        fname = data.get('fname')
-        lname = data.get('lname')
-    else:
-        patron_id = request.form['patronID']
-        fname = request.form['fname']
-        lname = request.form['lname']
+    data = request.get_json()
+    patron_id = data.get('patronID')
+    fname = data.get('fname')
+    lname = data.get('lname')
+
+    # Prevent duplicates
+    if Patron.query.get(patron_id):
+        return jsonify({'message': 'Error: Patron ID already exists!'}), 400
 
     new_patron = Patron(PatronID=patron_id, FName=fname, LName=lname)
     database.session.add(new_patron)
     database.session.commit()
-    return ("<script>alert('Patron added successfully!'); window.location.href='/'</script>")
+    return jsonify({'message': 'Patron added successfully!'})
+
 
 @app.route('/patrons', methods=['GET'])
 def get_patrons():
     patrons = Patron.query.all()
     return jsonify([{"ID": p.PatronID, 'fname': p.FName, 'lname': p.LName} for p in patrons])
 
+
 if __name__ == '__main__':
     app.run(debug=True)
 
 #This is a test line to demonstration
-
