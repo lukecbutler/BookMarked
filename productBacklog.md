@@ -5,7 +5,7 @@ Sprint 1 User Stories & Explaination:
 https://docs.google.com/document/d/1E6apVPr4awMuaj2UDfg5xsIbd9r3mprfmUElRIJyR3Y/edit?usp=sharing
 
 
-Dr. g meeting notes:
+Dr. g meeting #1 notes:
 ## highest priority user stories: ##
 SPRINT 1 USER STORIES:
 1. Checkout Item [items: movie's, books, newMovies's] (available)
