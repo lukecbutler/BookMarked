@@ -6,7 +6,6 @@ Trello:
 https://trello.com/b/2aiERKs0
 
 
-
 # BookMarked
 Systems Analysis library management system
 
@@ -15,18 +14,6 @@ Systems Analysis library management system
 Deliver a working **“Hello World” application** hosted on **PythonAnywhere**, along with:
 - A release plan
 - Initial backlog setup 
-
-## 📋 Sprint Backlog (Sprint 0)
-- As a librarian, I want to add a new patron's details (name, address, contact) into the system.
-    1. A new patron record (ID, First Name, Last Name) is created and saved into the system.
-- As a librarian, I want to be able to view existing patron's.
-    1. I can view existing patrons in the system.
-    2. The system displays the patron's ID's & Name.
-
-- Build initial front-end and back-end scaffolding 
-- Define at least one **user story** with clear **acceptance criteria**  
-
----
 
 ## 🛠️ Tech Stack
 - **Backend:** Flask, SQL  
