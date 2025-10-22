@@ -1,6 +1,9 @@
 Product Backlog:
 https://docs.google.com/spreadsheets/d/1PP7BaWFrvVPpQxypPUI-oNMLrsI0S1pPE7Cr69k_eeM/edit?gid=0#gid=0
 
+Sprint 1 User Stories & Explaination:
+https://docs.google.com/document/d/1E6apVPr4awMuaj2UDfg5xsIbd9r3mprfmUElRIJyR3Y/edit?usp=sharing
+
 
 Dr. g meeting notes:
 ## highest priority user stories: ##
