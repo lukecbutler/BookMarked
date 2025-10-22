@@ -28,55 +28,8 @@ https://docs.google.com/spreadsheets/d/1PP7BaWFrvVPpQxypPUI-oNMLrsI0S1pPE7Cr69k_
 
 
 Dr. g meeting notes:
-for sprint 0 - project setup, ie. how do we coordinate, frontend, backend, db technology
-priorities on backlog items
-you need to know the due date as soon as it gets checked out
-due dates vary depending on the type of item
-
-
-highest priority items:
-
-
-1. patron can check out a book
-    check if the card is available
-    be able to update the card
-
-
-1. Checkout Item [items: movie's, books, newMovies's]
-there are three conditoins to which not to checkout item
-    1. card expired (if expired extend patrons library card)
-    2. fine on account (off of system - will be done manually)
-    3. too many books checke dout (20 book limit)
-        If too many books - notify & automatically close transaction
-    4. Each item has it's own due date
-
-AC:
-- track when book was checked out, how long it can be rented for
-
-
-2. Checkout Item - 2 phases,
-    1. patron drops off book, check date from book and if the date is late, there will be a fine
-    2. check
-
-branches will be from the start
-2 branches
-
-high priority:
-checkout items 1. 
-return items 2. 
-reshelving 3. 
-
-(populate database with books, other items and patrons)
-low:
-?
-
-Sprint 1 user stories:
-1. Checkout Item
-2. Check in Item
-3. Reshelve Item
-
-
-
+## highest priority user stories: ##
+SPRINT 1 USER STORIES:
 1. Checkout Item [items: movie's, books, newMovies's] (available)
 there are three conditoins to which not to checkout item
     1. card expired (if expired extend patrons library card)
@@ -92,19 +45,8 @@ there are three conditoins to which not to checkout item
     2. If damaged, give status 'unavailable'
     3. Check Items location
 
-(what happens between 2 and 3 is outside of the system)
-after check in, books go into bin's, into damaged bin, different branch bin, my library bin - all three cases the book is still unavailable
-
 3. Reshelf Item: (Book is available in )
     1. Here's the book, make it available
 
 
 
-prompt user book is unavailable at some point
-EACH ITEM SHOULD HAVE IT'S OWN STATE
-
-
-BACKEND ONLY: add books and add patrons (these will be added in sprint 2 or 3)
-Adding books & patrons
-
-model THESE 3 - CLARIFY FOR TEAM
