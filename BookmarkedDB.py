@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///BookmarkedDB.db'
 
 database = SQLAlchemy(app)
 
@@ -11,7 +11,7 @@ class LibraryBranch(database.Model):
 
     __tablename__ = 'LibraryBranch'
 
-    BranchID = database.Column(database.Integer, primary_key=True, auto_increment=True)
+    BranchID = database.Column(database.Integer, primary_key=True, autoincrement=True)
     BranchName = database.Column(database.String(50))
     StreetNum = database.Column(database.Integer)
     StreetName = database.Column(database.String(30))
@@ -23,7 +23,7 @@ class ItemType(database.Model):
 
     __tablename__ = 'ItemType'
 
-    TypeID = database.Column(database.Integer, primary_key=True, auto_increment=True)
+    TypeID = database.Column(database.Integer, primary_key=True, autoincrement=True)
     TypeName = database.Column(database.String(30))
     RentalLength = database.Column(database.Integer)
     PerDayFine = database.Column(database.Numeric(10, 2))
@@ -32,7 +32,7 @@ class LibraryItem(database.Model):
 
     __tablename__ = 'LibraryItem'
 
-    ItemID = database.Column(database.Integer, primary_key=True, auto_increment=True)
+    ItemID = database.Column(database.Integer, primary_key=True, autoincrement=True)
     ItemType = database.Column(database.Integer, database.ForeignKey('ItemType.TypeID'))
     BelongsTo = database.Column(database.Integer, database.ForeignKey('LibraryBranch.BranchID'))
     AquisitionDate = database.Column(database.Date)
@@ -95,7 +95,7 @@ class Patron(database.Model):
     
     __tablename__ = 'Patron'
 
-    PatronID = database.Column(database.Integer, primary_key=True, auto_increment=True)
+    PatronID = database.Column(database.Integer, primary_key=True, autoincrement=True)
     PatronFN = database.Column(database.String(50))
     PatronLN = database.Column(database.String(50))
     StreetNum = database.Column(database.Integer)
@@ -111,7 +111,7 @@ class Checkout(database.Model):
 
     __tablename__ = 'Checkout'
 
-    TransactionID = database.Column(database.Integer, primary_key=True, auto_increment=True)
+    TransactionID = database.Column(database.Integer, primary_key=True, autoincrement=True)
     PatronID = database.Column(database.Integer, database.ForeignKey('Patron.PatronID'))
     ItemID = database.Column(database.Integer, database.ForeignKey('LibraryItem.ItemID'))
     CheckoutDate = database.Column(database.Date)
