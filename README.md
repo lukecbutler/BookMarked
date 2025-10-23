@@ -9,35 +9,10 @@ https://trello.com/b/2aiERKs0
 # BookMarked
 Systems Analysis library management system
 
-
-## 🎯 Sprint 0 Goal
-Deliver a working **“Hello World” application** hosted on **PythonAnywhere**, along with:
-- A release plan
-- Initial backlog setup 
-
 ## 🛠️ Tech Stack
 - **Backend:** Flask, SQL  
 - **Frontend:** HTML/CSS, JavaScript/TypeScript  
 - **Hosting:** PythonAnywhere  
-
----
-
-## 🗄️ Database Schema (Initial Draft)
-
-**checkout**  
-- patronID (PK, FK)  
-- bookID (PK, FK)  
-
-**books**  
-- bookID (PK)  
-- bookName  
-- author  
-
-**patrons**  
-- patronID (PK)  
-- fName  
-- lName
-
 ---
 
 ## 👥 Roles & Responsibilities
@@ -54,12 +29,3 @@ Deliver a working **“Hello World” application** hosted on **PythonAnywhere**
 | **Testing**       | Sai |
 
 ---
-
-## 📤 Outputs
-- Sprint Goal: “Hello World” + release plan  
-- Sprint Backlog: Tasks distributed across team members  
-- Shared diagrams and schema definitions  
-
----
-
-## 🚀 Next Steps
