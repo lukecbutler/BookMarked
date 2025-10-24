@@ -1,5 +1,5 @@
 Starting tasks:
-1. Create bones of flask app[]
+1. Create bones of flask app[√]
 2. Populate database with Patrons, Items & Branches[]
 
 
@@ -16,7 +16,7 @@ Logic for user story 1:
         c. display due date
 
 User Story 1 Tasks[Check-out]:
-1. Function to accept user input of Patron ID
+1. Function to accept user input of Patron ID 
 2. Function to check if account is expired
 3. Function to extend patron account
 4. Function to check for late fees
@@ -34,5 +34,4 @@ User Story 2 Tasks[Check-in]:
 
 
 User Story 3 Tasks[Reshelve]:
-1. A function to search items
-2. A function to change availability attribute
+1. A function to change availability attribute
