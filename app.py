@@ -13,14 +13,12 @@ database = SQLAlchemy(app)
 # --- Model Definitions (Copied Exactly) ---
 
 class LibraryBranch(database.Model):
-
     __tablename__ = 'LibraryBranch'
 
     BranchID = database.Column(database.Integer, primary_key=True, autoincrement=True)
     BranchName = database.Column(database.String(50))
 
 class ItemType(database.Model):
-
     __tablename__ = 'ItemType'
 
     TypeID = database.Column(database.Integer, primary_key=True, autoincrement=True)
@@ -29,7 +27,6 @@ class ItemType(database.Model):
     PerDayFine = database.Column(database.Numeric(10, 2))
 
 class LibraryItem(database.Model):
-
     __tablename__ = 'LibraryItem'
 
     ItemID = database.Column(database.Integer, primary_key=True, autoincrement=True)
@@ -41,7 +38,6 @@ class LibraryItem(database.Model):
     ShelfCode = database.Column(database.String(5))
 
 class Patron(database.Model):
-    
     __tablename__ = 'Patron'
 
     PatronID = database.Column(database.Integer, primary_key=True, autoincrement=True)
@@ -52,7 +48,6 @@ class Patron(database.Model):
     ItemsCheckedOut = database.Column(database.Integer)
 
 class Checkout(database.Model):
-
     __tablename__ = 'Checkout'
 
     TransactionID = database.Column(database.Integer, primary_key=True, autoincrement=True)
@@ -61,12 +56,12 @@ class Checkout(database.Model):
     CheckoutDate = database.Column(database.Date)
 
 class Return(database.Model):
-
     __tablename__ = 'Return'
 
     TransactionID = database.Column(database.Integer, database.ForeignKey('Checkout.TransactionID'), primary_key=True)
     DateReturned = database.Column(database.Date)
     BranchReturnedTo = database.Column(database.Integer, database.ForeignKey('LibraryBranch.BranchID'))
+
 
 
 # --- Routes ---
