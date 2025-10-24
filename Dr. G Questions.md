@@ -6,4 +6,6 @@
 
 3. Does library card expiration & number of items limit need to be checked out initially.
 
-4. Do we need a way to pay the patron's late fee's in these user stories
+4. Do we need a way to pay the patron's late fee's in these user stories.
+
+5. In general, what are you looking for in a product?
