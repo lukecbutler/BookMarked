@@ -9,3 +9,16 @@
 4. Do we need a way to pay the patron's late fee's in these user stories.
 
 5. In general, what are you looking for in a product?
+4. Do we need a way to pay the patron's late fee's in these user stories
+
+
+
+
+
+
+
+Possible Qs / Ideas
+
+- The per-day fine for an item is calculated based on its cost; for example, if the fine is one-tenth of the cost, a $10 item would have a $1 per-day fine.
+
+per_day_fine_in_cents=(item.cost_in_cents // 100)
