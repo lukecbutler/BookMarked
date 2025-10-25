@@ -70,7 +70,7 @@ class Return(database.Model):
     BranchReturnedTo = database.Column(database.Integer, database.ForeignKey('LibraryBranch.BranchID'))
 
 
-# should we have account expiration date or calculate expiration on account creation dates??
+# should we have account expiration date or calculate expiration on account creation dates?? - we can check the account expiration date in the patron table. That's how I populated the db. Your function below looks good. Also berker this is fire nice fing job. ~ Luke
 # def membership_expired(patron) -> bool:
 #     if not patron or not patron.AccountCreatedDate:
 #         return False
