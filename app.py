@@ -1,11 +1,18 @@
+import os
 from flask import Flask, request, jsonify, render_template_string
 from flask_sqlalchemy import SQLAlchemy
-from datetime import date # Import date for Date columns
+from datetime import date
+from flask import render_template_string 
 
 app = Flask(__name__)
 
-# Ensure this matches your database file name
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///Sprint1db.db'
+db_dir = app.instance_path
+os.makedirs(db_dir, exist_ok=True)
+db_path = os.path.join(db_dir, 'sprint1db.db') 
+
+
+app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{db_path}"
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Create the SQLAlchemy instance linked to the app
 database = SQLAlchemy(app)
@@ -67,26 +74,113 @@ class Return(database.Model):
 # --- Routes ---
 @app.route('/')
 def home():
-    """Returns a JSON list of all patrons."""
-    try:
-        # Use the exact model and column names provided
-        all_patrons = Patron.query.all()
-        patrons_list = [
-            {"PatronID": p.PatronID, "FName": p.PatronFN, "LName": p.PatronLN}
-            for p in all_patrons
-        ]
-        return jsonify(patrons_list)
-    
-    except Exception as e:
-        app.logger.error(f"Error fetching patrons: {e}") # Log the error for debugging
-        # Provide a more informative error response
-        return jsonify({"error": "Could not fetch patrons", "details": str(e)}), 500
+    all_patrons = Patron.query.all()
+    return jsonify([
+        {"PatronID": p.PatronID, "FName": p.PatronFN, "LName": p.PatronLN}
+        for p in all_patrons
+    ])
+
+@app.route('/api/itemtypes')
+def api_item_types():
+    types = ItemType.query.order_by(ItemType.TypeName).all()
+    return jsonify([{"TypeID": t.TypeID, "TypeName": t.TypeName} for t in types])
+
+@app.route('/api/items')
+def api_items_by_type():
+    type_id_raw = request.args.get('type_id', '').strip()
+
+    q = LibraryItem.query
+    if type_id_raw.isdigit():
+        q = q.filter(LibraryItem.ItemType == int(type_id_raw))
+
+    items = q.order_by(LibraryItem.ItemTitle).all()
+    return jsonify([{"ItemID": i.ItemID, "ItemTitle": i.ItemTitle} for i in items])
+
+# demo page code
+_checkout_form_min = """
+<!doctype html>
+<title>Select an Item</title>
+<h2>Select an Item (minimal demo)</h2>
+
+<label>Item Type</label><br>
+<select id="item_type">
+  <option value="">-- select type --</option>
+</select>
+<br><br>
+
+<label>Item</label><br>
+<select id="item_id">
+  <option value="">-- select item --</option>
+</select>
+<br><br>
+
+<div id="picked" style="margin-top:10px; font-family: monospace;"></div>
+
+<script>
+// load item types
+async function loadTypes() {
+  const resp = await fetch('/api/itemtypes');
+  const types = await resp.json();
+  const sel = document.getElementById('item_type');
+  sel.innerHTML = '<option value="">-- select type --</option>';
+  types.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t.TypeID;
+    opt.textContent = t.TypeName;
+    sel.appendChild(opt);
+  });
+}
+
+// load items for a given type id (or all if empty)
+async function loadItems(typeId) {
+  const url = '/api/items' + (typeId ? ('?type_id=' + encodeURIComponent(typeId)) : '');
+  const resp = await fetch(url);
+  const items = await resp.json();
+  const sel = document.getElementById('item_id');
+  sel.innerHTML = '<option value="">-- select item --</option>';
+  items.forEach(i => {
+    const opt = document.createElement('option');
+    opt.value = i.ItemID;
+    opt.textContent = i.ItemTitle + ' (ID ' + i.ItemID + ')';
+    sel.appendChild(opt);
+  });
+}
+
+// wire up
+document.addEventListener('DOMContentLoaded', () => {
+  loadTypes();
+  // when type changes, load items
+  document.getElementById('item_type').addEventListener('change', (e) => {
+    loadItems(e.target.value);
+    document.getElementById('picked').textContent = '';
+  });
+  // show the chosen item (purely visual for now)
+  document.getElementById('item_id').addEventListener('change', (e) => {
+    const itemId = e.target.value || '';
+    const itemText = e.target.options[e.target.selectedIndex]?.text || '';
+    document.getElementById('picked').textContent =
+      itemId ? ('Selected: ' + itemText) : '';
+  });
+});
+</script>
+"""
+
+@app.route('/checkout', methods=['GET'])
+def checkout_form_min():
+    # DEmo page
+    return render_template_string(_checkout_form_min)
+
+
+# ---------- Utility ----------
+
+@app.route('/dbinfo')
+def dbinfo():
+    return jsonify({"db_uri": app.config['SQLALCHEMY_DATABASE_URI']})
 
 # --- Main execution block ---
 if __name__ == '__main__':
     with app.app_context():
-        # Create database tables if they don't exist based on the models defined above
         database.create_all()
-    # Run the Flask development server
-    # Port 5000 is standard for local Flask dev
-    app.run(debug=True, host='0.0.0.0', port=80)
+
+    #BERKER: Updated port to 5001, had problems with 80.
+    app.run(debug=True, host='0.0.0.0', port=5001)
