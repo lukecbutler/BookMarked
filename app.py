@@ -2,7 +2,7 @@ import os
 from flask import Flask, request, jsonify, render_template_string
 from flask_sqlalchemy import SQLAlchemy
 from datetime import date
-from flask import render_template_string 
+from flask import render_template
 
 app = Flask(__name__)
 
@@ -72,21 +72,31 @@ class Return(database.Model):
 
 
 # --- Routes ---
+
+MAX_ITEMS_PER_PATRON = 20
+
 @app.route('/')
 def home():
+    #To return JSON
     all_patrons = Patron.query.all()
-    return jsonify([
+    patrons_list = [
         {"PatronID": p.PatronID, "FName": p.PatronFN, "LName": p.PatronLN}
         for p in all_patrons
-    ])
+    ]
+    return jsonify(patrons_list)
 
 @app.route('/api/itemtypes')
 def api_item_types():
+    """Return all item types."""
     types = ItemType.query.order_by(ItemType.TypeName).all()
-    return jsonify([{"TypeID": t.TypeID, "TypeName": t.TypeName} for t in types])
+    return jsonify([
+        {"TypeID": t.TypeID, "TypeName": t.TypeName}
+        for t in types
+    ])
 
 @app.route('/api/items')
 def api_items_by_type():
+    """Return items filtered by item type (no validation or availability filters yet)."""
     type_id_raw = request.args.get('type_id', '').strip()
 
     q = LibraryItem.query
@@ -94,88 +104,66 @@ def api_items_by_type():
         q = q.filter(LibraryItem.ItemType == int(type_id_raw))
 
     items = q.order_by(LibraryItem.ItemTitle).all()
-    return jsonify([{"ItemID": i.ItemID, "ItemTitle": i.ItemTitle} for i in items])
+    return jsonify([
+        {"ItemID": i.ItemID, "ItemTitle": i.ItemTitle}
+        for i in items
+    ])
 
-# demo page code
-_checkout_form_min = """
-<!doctype html>
-<title>Select an Item</title>
-<h2>Select an Item (minimal demo)</h2>
 
-<label>Item Type</label><br>
-<select id="item_type">
-  <option value="">-- select type --</option>
-</select>
-<br><br>
+# Checkout demo page + porst
 
-<label>Item</label><br>
-<select id="item_id">
-  <option value="">-- select item --</option>
-</select>
-<br><br>
-
-<div id="picked" style="margin-top:10px; font-family: monospace;"></div>
-
-<script>
-// load item types
-async function loadTypes() {
-  const resp = await fetch('/api/itemtypes');
-  const types = await resp.json();
-  const sel = document.getElementById('item_type');
-  sel.innerHTML = '<option value="">-- select type --</option>';
-  types.forEach(t => {
-    const opt = document.createElement('option');
-    opt.value = t.TypeID;
-    opt.textContent = t.TypeName;
-    sel.appendChild(opt);
-  });
-}
-
-// load items for a given type id (or all if empty)
-async function loadItems(typeId) {
-  const url = '/api/items' + (typeId ? ('?type_id=' + encodeURIComponent(typeId)) : '');
-  const resp = await fetch(url);
-  const items = await resp.json();
-  const sel = document.getElementById('item_id');
-  sel.innerHTML = '<option value="">-- select item --</option>';
-  items.forEach(i => {
-    const opt = document.createElement('option');
-    opt.value = i.ItemID;
-    opt.textContent = i.ItemTitle + ' (ID ' + i.ItemID + ')';
-    sel.appendChild(opt);
-  });
-}
-
-// wire up
-document.addEventListener('DOMContentLoaded', () => {
-  loadTypes();
-  // when type changes, load items
-  document.getElementById('item_type').addEventListener('change', (e) => {
-    loadItems(e.target.value);
-    document.getElementById('picked').textContent = '';
-  });
-  // show the chosen item (purely visual for now)
-  document.getElementById('item_id').addEventListener('change', (e) => {
-    const itemId = e.target.value || '';
-    const itemText = e.target.options[e.target.selectedIndex]?.text || '';
-    document.getElementById('picked').textContent =
-      itemId ? ('Selected: ' + itemText) : '';
-  });
-});
-</script>
-"""
 
 @app.route('/checkout', methods=['GET'])
-def checkout_form_min():
-    # DEmo page
-    return render_template_string(_checkout_form_min)
+def checkout_form():
+    return render_template('checkout.html')
+
+@app.route('/checkout', methods=['POST'])
 
 
-# ---------- Utility ----------
-
+# ----------------------------
+# Utility
+# ----------------------------
 @app.route('/dbinfo')
-def dbinfo():
-    return jsonify({"db_uri": app.config['SQLALCHEMY_DATABASE_URI']})
+def checkout_basic():
+    payload = request.get_json(silent=True) or request.form
+    patron_id = int(payload.get('patron_id', -1))
+    item_id = int(payload.get('item_id', -1))
+
+    patron = Patron.query.get(patron_id)
+    item = LibraryItem.query.get(item_id)
+
+    if patron is None:
+        return jsonify({"ok": False, "error": "Patron not found"})
+    if item is None:
+        return jsonify({"ok": False, "error": "Item not found"})
+
+    # availability check
+    if item.Availability is False:
+        return jsonify({"ok": False, "error": "Item not avaliable"})
+
+    #limit check
+    current_count = patron.ItemsCheckedOut or 0
+    if current_count >= MAX_ITEMS_PER_PATRON:
+        return jsonify({"ok": False, "error": f"Individual checkout imit reached 20 items"})
+
+    co = Checkout(PatronID=patron_id, ItemID=item_id, CheckoutDate=date.today())
+    database.session.add(co)
+
+    item.Availability = False
+    patron.ItemsCheckedOut = current_count + 1
+
+    database.session.commit()
+
+    return jsonify({
+        "ok": True,
+        "message": "Checkout recorded.",
+        "patron_id": patron_id,
+        "item_id": item_id,
+        "checkout_date": str(date.today())
+    }), 201
+
+
+
 
 # --- Main execution block ---
 if __name__ == '__main__':

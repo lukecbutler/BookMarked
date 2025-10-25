@@ -1,0 +1,72 @@
+<!doctype html>
+<html>
+<head>
+  <title>Checkout Demo</title>
+</head>
+<body>
+  <h2>Checkout (single item · demo)</h2>
+
+  <form method="post" action="/checkout" id="checkout-form">
+    <label>Patron ID</label><br>
+    <input name="patron_id" id="patron_id" type="number" required>
+    <br><br>
+
+    <label>Item Type</label><br>
+    <select id="item_type">
+      <option value="">-- select type --</option>
+    </select>
+    <br><br>
+
+    <label>Item</label><br>
+    <select name="item_id" id="item_id" required>
+      <option value="">-- select item --</option>
+    </select>
+    <br><br>
+
+    <button type="submit">Checkout</button>
+  </form>
+
+  <div id="picked" style="margin-top:10px; font-family: monospace;"></div>
+
+  <script>
+    async function loadTypes() {
+      const resp = await fetch('/api/itemtypes');
+      const types = await resp.json();
+      const sel = document.getElementById('item_type');
+      sel.innerHTML = '<option value="">-- select type --</option>';
+      types.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.TypeID;
+        opt.textContent = t.TypeName;
+        sel.appendChild(opt);
+      });
+    }
+
+    async function loadItems(typeId) {
+      const url = '/api/items' + (typeId ? ('?type_id=' + encodeURIComponent(typeId)) : '');
+      const resp = await fetch(url);
+      const items = await resp.json();
+      const sel = document.getElementById('item_id');
+      sel.innerHTML = '<option value="">-- select item --</option>';
+      items.forEach(i => {
+        const opt = document.createElement('option');
+        opt.value = i.ItemID;
+        opt.textContent = i.ItemTitle + ' (ID ' + i.ItemID + ')';
+        sel.appendChild(opt);
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadTypes();
+      document.getElementById('item_type').addEventListener('change', (e) => {
+        loadItems(e.target.value);
+        document.getElementById('picked').textContent = '';
+      });
+      document.getElementById('item_id').addEventListener('change', (e) => {
+        const itemText = e.target.options[e.target.selectedIndex]?.text || '';
+        document.getElementById('picked').textContent = itemText ? ('Selected: ' + itemText) : '';
+      });
+    });
+  </script>
+</body>
+</html>
