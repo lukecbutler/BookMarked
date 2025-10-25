@@ -156,25 +156,53 @@ def checkout_basic():
     current_count = patron.ItemsCheckedOut or 0
     if current_count >= MAX_ITEMS_PER_PATRON:
         return jsonify({"ok": False, "error": "Individual checkout limit reached (20 items)"})
-
+    
     # create checkout record
-    co = Checkout(PatronID=patron_id, ItemID=item_id, CheckoutDate=date.today())
-    database.session.add(co)
-
+    new_checkout = Checkout(
+        PatronID=patron_id, 
+        ItemID=item_id, 
+        CheckoutDate=date.today()
+    )
+    database.session.add(new_checkout)
     # update item and patron info
     item.Availability = False
     patron.ItemsCheckedOut = current_count + 1
-
     database.session.commit()
 
-    # if success
+    #showing currently checkedout items for patron
+    active_checkouts = (
+        database.session.query(Checkout, LibraryItem, Patron)
+        .join(LibraryItem, Checkout.ItemID == LibraryItem.ItemID)
+        .join(Patron, Checkout.PatronID == Patron.PatronID)
+        .outerjoin(Return, Return.TransactionID == Checkout.TransactionID)
+        .filter(
+            Return.TransactionID.is_(None),
+            Checkout.PatronID == patron_id
+        )
+        .order_by(Checkout.CheckoutDate.desc(), Checkout.TransactionID.desc())
+        .all()
+    )
+
+    checked_out_list = [
+        {
+            "TransactionID": checkout.TransactionID,
+            "PatronID": patron.PatronID,
+            "PatronName": f"{patron.PatronFN} {patron.PatronLN}",
+            "ItemID": item.ItemID,
+            "ItemTitle": item.ItemTitle,
+            "CheckoutDate": str(checkout.CheckoutDate)
+        }
+        for checkout, item, patron in active_checkouts
+    ]
+
     return jsonify({
         "ok": True,
         "message": "Checkout recorded.",
         "patron_id": patron_id,
         "item_id": item_id,
-        "checkout_date": str(date.today())
-    }), 201
+        "checkout_date": str(date.today()),
+        "checked_out": checked_out_list
+    })
 
 
 
