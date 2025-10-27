@@ -4,6 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import date
 from flask import render_template
 
+
 app = Flask(__name__)
 
 db_dir = app.instance_path
@@ -147,6 +148,13 @@ def checkout_basic():
             "message": "RENEW MEMBERSHIP NOW!!",
             "expired_on": str(patron.AccountExpDate)
         })
+    
+    # checking if patron owes fees
+    if patron.FeesOwed and patron.FeesOwed > 0:
+        return jsonify({
+        "ok": False,
+        "error": f"fine balance of ${float(patron.FeesOwed):.2f}. clear fines first!!."
+    })
 
     # check availability
     if item.Availability is False:
