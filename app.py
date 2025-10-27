@@ -1,24 +1,23 @@
 import os
-from flask import Flask, request, jsonify, render_template_string
+from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 from datetime import date
-from flask import render_template
 
 app = Flask(__name__)
 
+# Create db route
 db_dir = app.instance_path
 os.makedirs(db_dir, exist_ok=True)
 db_path = os.path.join(db_dir, 'sprint1db.db') 
 
-
+# Configure database
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{db_path}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Create the SQLAlchemy instance linked to the app
 database = SQLAlchemy(app)
 
-# --- Model Definitions (Copied Exactly) ---
-
+#### --- Database Models --- ####
 class LibraryBranch(database.Model):
     __tablename__ = 'LibraryBranch'
 
@@ -77,43 +76,79 @@ class Return(database.Model):
 #     days_since_account_created = (date.today() - patron.AccountCreatedDate).days
 #     return days_since_account_created >= 365
 
-def membership_expired(patron) -> bool:
+#### --- Core Logic --- ####
+def membership_expired(patron: Patron) -> bool:
+    '''
+    This function checks if a patron's account is expired
+    Returns TRUE if expired
+    Returns FALSE if not expired
+    '''
     return bool(patron and patron.AccountExpDate and patron.AccountExpDate < date.today())
 
-
-
-# --- Routes ---
+#### --- Routes --- ####
 MAX_ITEMS_PER_PATRON = 20
 
 @app.route('/')
 def home():
-    #to return json
+    return render_template('index.html')
+
+@app.route('/patrons')
+def patrons() -> jsonify:
+    '''This route returns JSON data of all patrons in the database'''
     all_patrons = Patron.query.all()
-    patrons_list = [
-        {"PatronID": p.PatronID, "FName": p.PatronFN, "LName": p.PatronLN}
-        for p in all_patrons
-    ]
+    patrons_list = []
+
+    for p in all_patrons:
+        patron_data = {
+            "PatronID": p.PatronID,
+            "FName": p.PatronFN,
+            "LName": p.PatronLN,
+            "Fees": p.FeesOwed
+        }
+        patrons_list.append(patron_data)
+
     return jsonify(patrons_list)
 
-###api endpoints for dropdowns
 
+#### API Endpoints for Dropdown Menu's on Front-end ####
 @app.route('/api/itemtypes')
-def api_item_types():
-    ##return all items
-    types = ItemType.query.order_by(ItemType.TypeName).all()
-    return jsonify([{"TypeID": t.TypeID, "TypeName": t.TypeName} for t in types])
+def api_item_types() -> jsonify:
+    '''This function returns all item types from the database in JSON format'''
+    
+    all_types = ItemType.query.order_by(ItemType.TypeName).all() # Query all ItemType objects from the db
+    types_list = [] # Init empty list to store JSON dicts
+
+    # Loop through all types in db, create new dict for each TypeID & TypeName, add to JSON list of dicts
+    for t in all_types:
+        type_data = {
+            "TypeID": t.TypeID,
+            "TypeName": t.TypeName
+        }
+        types_list.append(type_data)
+
+    return jsonify(types_list) # Convert the list of dictionaries to a JSON response
 
 @app.route('/api/items')
 def api_items_by_type():
-   #returning filtered items
-    type_id_raw = request.args.get('type_id', '').strip()
+    '''This function returns list all library items (ID & Title) in JSON format'''
+    type_id_from_url = request.args.get('type_id', '').strip() # check for query parameter in url
 
-    q = LibraryItem.query
-    if type_id_raw.isdigit():
-        q = q.filter(LibraryItem.ItemType == int(type_id_raw))
+    query = LibraryItem.query
+    if type_id_from_url.isdigit(): 
+        query = query.filter(LibraryItem.ItemType == int(type_id_from_url))
 
-    items = q.order_by(LibraryItem.ItemTitle).all()
-    return jsonify([{"ItemID": i.ItemID, "ItemTitle": i.ItemTitle} for i in items])
+    items_from_db = query.order_by(LibraryItem.ItemTitle).all()
+
+    output_list = []
+    for item in items_from_db:
+        item_data = {
+            "ItemID": item.ItemID,
+            "ItemTitle": item.ItemTitle
+        }
+
+        output_list.append(item_data)
+    return jsonify(output_list)
+
 
 
 # Checkout demo page + post
@@ -121,11 +156,10 @@ def api_items_by_type():
 
 @app.route('/checkout', methods=['GET'])
 def checkout_form():
-    # loading demo page for now
-    return render_template('checkout.html')
+    return render_template('checkout.html') # loading demo page for now
 
 @app.route('/checkout', methods=['POST'])
-def checkout_basic():
+def checkout_basic() -> jsonify:
     payload = request.get_json(silent=True) or request.form
     patron_id = int(payload.get('patron_id', -1))
     item_id = int(payload.get('item_id', -1))
@@ -217,6 +251,7 @@ def dbinfo():
 
 # --- Main execution block ---
 if __name__ == '__main__':
+
     with app.app_context():
         database.create_all()
 
