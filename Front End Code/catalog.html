@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wayback Public Library - Catalog</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <style>
+        :root {
+            --teal: #007b7b;
+            --teal-dark: #005f5f;
+            --gold: #ffd700;
+            --white: #ffffff;
+            --bg: #e8f3f3;
+            --text-dark: #003333;
+            --shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text-dark);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* ---------- HEADER ---------- */
+        header {
+            background: linear-gradient(90deg, var(--teal), var(--teal-dark));
+            color: var(--white);
+            text-align: center;
+            padding: 2rem 1rem 1rem 1rem;
+            box-shadow: var(--shadow);
+        }
+
+        header h1 {
+            font-size: 2.2rem;
+        }
+
+        header p {
+            margin-top: 0.5rem;
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        /* ---------- NAVIGATION ---------- */
+        nav {
+            background-color: var(--teal-dark);
+            border-bottom: 4px solid var(--gold);
+            /* ✅ only bottom gold line */
+            box-shadow: var(--shadow);
+        }
+
+        nav ul {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            list-style: none;
+            padding: 0.75rem 0;
+            margin: 0;
+        }
+
+        nav li {
+            margin: 0 1rem;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: #ffffff;
+            font-weight: 600;
+            padding: 8px 18px;
+            border-radius: 30px;
+            transition: all 0.3s ease;
+        }
+
+        nav a:hover {
+            background-color: var(--teal);
+            color: #ffffff;
+        }
+
+        nav a.active {
+            background-color: var(--gold);
+            color: var(--teal-dark);
+            font-weight: 700;
+        }
+
+        /* ---------- MAIN ---------- */
+        main {
+            flex: 1;
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: var(--white);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+        }
+
+        h2 {
+            text-align: center;
+            color: var(--teal-dark);
+            margin-bottom: 1.5rem;
+        }
+
+        /* ---------- SEARCH AREA ---------- */
+        #searchInput,
+        #searchCriteria {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 1rem;
+            margin-right: 10px;
+        }
+
+        #searchBtn,
+        #addItemBtn,
+        #addSubmitBtn,
+        #closeFormBtn,
+        #generateLabelBtn {
+            background-color: var(--teal);
+            color: var(--white);
+            border: none;
+            padding: 12px 24px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+
+        #searchBtn:hover,
+        #addItemBtn:hover,
+        #addSubmitBtn:hover,
+        #closeFormBtn:hover,
+        #generateLabelBtn:hover {
+            background-color: var(--teal-dark);
+            color: #ffffff;
+            transform: translateY(-2px);
+        }
+
+        /* ---------- FORM ---------- */
+        #addItemFormContainer {
+            display: none;
+            margin-top: 2rem;
+            padding: 2rem;
+            background: #fdfdfd;
+            border-radius: 10px;
+            border: 1px solid #d1e0e0;
+            box-shadow: var(--shadow);
+            animation: fadeIn 0.5s ease;
+        }
+
+        .form-group {
+            margin-bottom: 1.2rem;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-dark);
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .error-message {
+            background-color: #ffe5e5;
+            border: 1px solid #ff6666;
+            color: #d32f2f;
+            padding: 6px;
+            border-radius: 5px;
+            margin-top: 5px;
+            display: none;
+        }
+
+        /* ---------- TABLE ---------- */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 2rem;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+
+        th,
+        td {
+            padding: 12px;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+
+        th {
+            background-color: var(--teal);
+            color: var(--white);
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f7f9fa;
+        }
+
+        tr:hover {
+            background-color: rgba(0, 123, 123, 0.1);
+            transition: background 0.3s ease;
+        }
+
+        /* ---------- FOOTER ---------- */
+        footer {
+            text-align: center;
+            background: linear-gradient(90deg, var(--teal), var(--teal-dark));
+            color: var(--white);
+            padding: 1rem;
+            margin-top: auto;
+            font-weight: 500;
+            border-top: 4px solid var(--gold);
+        }
+
+        /* ---------- RESPONSIVE ---------- */
+        @media (max-width: 768px) {
+            nav ul {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            #searchInput,
+            #searchCriteria {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+
+            #searchBtn,
+            #addItemBtn {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Wayback Public Library</h1>
+        <p>Your Gateway to Knowledge</p>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="home.html">Home</a></li>
+            <li><a href="index.html">Patron Management</a></li>
+            <li><a href="catalog.html" class="active">Catalog</a></li>
+            <li><a href="checkin.html">Check In</a></li>
+            <li><a href="checkout.html">Check Out</a></li>
+            <li><a href="latefees.html">Late Fees</a></li>
+            <li><a href="Return.html">Return</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <h2>Catalog Management</h2>
+
+        <div style="text-align:center; margin-bottom:20px;">
+            <input type="text" id="searchInput" placeholder="Search items in the catalog" />
+            <select id="searchCriteria">
+                <option value="title">Title</option>
+                <option value="author">Author</option>
+                <option value="itemID">Item ID</option>
+                <option value="itemType">Item Type</option>
+                <option value="branch">Branch</option>
+            </select>
+            <button id="searchBtn">Search</button>
+            <button id="addItemBtn">Add Item</button>
+        </div>
+
+        <div id="addItemFormContainer">
+            <button id="closeFormBtn">Close</button>
+            <h3>Add Item</h3>
+            <form>
+                <div class="form-group">
+                    <label for="title">Title:</label>
+                    <input type="text" id="title" name="title" required />
+                </div>
+                <div class="form-group">
+                    <label for="author">Author:</label>
+                    <input type="text" id="author" name="author" required />
+                </div>
+                <div class="form-group">
+                    <label for="year">Year:</label>
+                    <input type="text" id="year" name="year" maxlength="4" required />
+                    <div id="numericErrorMessageYear" class="error-message">Only numeric values are allowed.</div>
+                </div>
+                <div class="form-group">
+                    <label for="locCode">Library of Congress Code:</label>
+                    <input type="text" id="locCode" name="locCode" maxlength="12" />
+                </div>
+                <div class="form-group">
+                    <label for="shelfCode">Shelf Location Code:</label>
+                    <input type="text" id="shelfCode" name="shelfCode" required />
+                </div>
+                <div class="form-group">
+                    <label for="cost">Cost:</label>
+                    <input type="text" id="cost" name="cost" required />
+                </div>
+                <div class="form-group">
+                    <label for="lateFee">Late Fee:</label>
+                    <input type="text" id="lateFee" name="lateFee" required />
+                </div>
+                <div class="form-group">
+                    <label for="itemType">Item Type:</label>
+                    <select id="itemType" name="itemType" required>
+                        <option value="Book">Book</option>
+                        <option value="DVD">DVD</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="duration">Duration (days):</label>
+                    <input type="number" id="duration" name="duration" required value="14" />
+                </div>
+                <div class="form-group">
+                    <label for="branch">Branch:</label>
+                    <select id="branch" name="branch" required>
+                        <option value="Main">Main</option>
+                        <option value="Pine Valley">Pine Valley</option>
+                        <option value="North East">North East</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="inStock">In Stock:</label>
+                    <input type="number" id="inStock" name="inStock" required />
+                </div>
+                <div class="form-group">
+                    <button type="button" id="generateLabelBtn">Generate Label</button>
+                    <button type="submit" id="addSubmitBtn">Add</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="inventoryTableContainer">
+            <table id="inventoryTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Title</th>
+                        <th>Author</th>
+                        <th>Year</th>
+                        <th>Library of Congress Code</th>
+                        <th>Shelf Location Code</th>
+                        <th>Cost</th>
+                        <th>Late Fee</th>
+                        <th>Item Type</th>
+                        <th>Duration (days)</th>
+                        <th>Branch</th>
+                        <th>In Stock</th>
+                        <th colspan="2">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="inventoryTableBody"></tbody>
+            </table>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Wayback Public Library</p>
+    </footer>
+
+    <script>
+        $(document).ready(function () {
+            $('#addItemBtn').click(() => $('#addItemFormContainer').slideDown());
+            $('#closeFormBtn').click(() => $('#addItemFormContainer').slideUp());
+
+            $('#year').on('input', function () {
+                let value = $(this).val();
+                if (/[^0-9]/.test(value)) {
+                    $('#numericErrorMessageYear').show();
+                    $(this).val(value.replace(/[^0-9]/g, ''));
+                } else {
+                    $('#numericErrorMessageYear').hide();
+                }
+            });
+
+            $('#locCode').on('input', function () {
+                if ($(this).val().length > 12) {
+                    $(this).val($(this).val().slice(0, 12));
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

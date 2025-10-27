@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wayback Public Library - Check In</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <style>
+        :root {
+            --teal: #007b7b;
+            --teal-dark: #005f5f;
+            --gold: #ffd700;
+            --white: #ffffff;
+            --bg: #e8f3f3;
+            --text-dark: #003333;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text-dark);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* ---------- HEADER ---------- */
+        header {
+            background: linear-gradient(90deg, var(--teal), var(--teal-dark));
+            color: var(--white);
+            text-align: center;
+            padding: 2rem 1rem 1rem 1rem;
+            box-shadow: var(--shadow);
+        }
+
+        header h1 {
+            font-size: 2.2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        /* ---------- NAVIGATION ---------- */
+        nav {
+            background-color: var(--teal-dark);
+            border-bottom: 4px solid var(--gold);
+            box-shadow: var(--shadow);
+        }
+
+        nav ul {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            list-style: none;
+            padding: 0.75rem 0;
+            margin: 0;
+        }
+
+        nav li {
+            margin: 0 1rem;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: #ffffff;
+            font-weight: 600;
+            padding: 8px 18px;
+            border-radius: 30px;
+            transition: all 0.3s ease;
+        }
+
+        nav a:hover {
+            background-color: var(--teal);
+            color: #ffffff;
+        }
+
+        nav a.active {
+            background-color: var(--gold);
+            color: var(--teal-dark);
+            font-weight: 700;
+        }
+
+        /* ---------- MAIN ---------- */
+        main {
+            flex: 1;
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: var(--white);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            text-align: center;
+            animation: fadeIn 0.8s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            color: var(--teal-dark);
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-dark);
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: var(--teal);
+            box-shadow: 0 0 0 3px rgba(0, 123, 123, 0.15);
+            outline: none;
+        }
+
+        /* ---------- BUTTONS ---------- */
+        #checkin,
+        #printReceipt {
+            background-color: var(--teal);
+            color: var(--white);
+            border: none;
+            padding: 12px 24px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow);
+            margin: 10px;
+        }
+
+        #checkin:hover,
+        #printReceipt:hover {
+            background-color: var(--teal-dark);
+            color: #ffffff;
+            transform: translateY(-2px);
+        }
+
+        /* ---------- FOOTER ---------- */
+        footer {
+            text-align: center;
+            background: linear-gradient(90deg, var(--teal), var(--teal-dark));
+            color: var(--white);
+            padding: 1rem;
+            margin-top: auto;
+            border-top: 4px solid var(--gold);
+        }
+
+        /* ---------- RESPONSIVE ---------- */
+        @media (max-width: 768px) {
+            main {
+                padding: 1.5rem;
+                width: 90%;
+            }
+
+            #checkin,
+            #printReceipt {
+                width: 100%;
+                margin: 0.5rem 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Wayback Public Library</h1>
+        <p>Your Gateway to Knowledge</p>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="home.html">Home</a></li>
+            <li><a href="index.html">Patron Management</a></li>
+            <li><a href="catalog.html">Catalog</a></li>
+            <li><a href="checkin.html" class="active">Check In</a></li>
+            <li><a href="checkout.html">Check Out</a></li>
+            <li><a href="latefees.html">Late Fees</a></li>
+            <li><a href="Return.html">Return</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <h1>Library Check-In</h1>
+        <form id="checkoutForm" action="checkin.php" method="post">
+            <div class="form-group">
+                <label for="itemID">Item ID:</label>
+                <select id="itemID" name="itemID" required></select>
+            </div>
+
+            <div class="form-group">
+                <label for="branch">Origin Branch:</label>
+                <input type="text" id="branch" name="branch" readonly />
+            </div>
+
+            <div class="form-group">
+                <label for="branchReturned">Branch Returned:</label>
+                <select id="branchReturned" name="branchReturned" required>
+                    <option value="">Select Branch</option>
+                    <option value="Main">Main</option>
+                    <option value="Pine Valley">Pine Valley</option>
+                    <option value="North East">North East</option>
+                </select>
+            </div>
+
+            <div>
+                <input type="submit" id="checkin" value="Check In" />
+                <button type="button" id="printReceipt">Print Receipt</button>
+            </div>
+        </form>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Wayback Public Library</p>
+    </footer>
+
+    <script>
+        $(document).ready(function () {
+            // Populate item ID dropdown dynamically
+            $.ajax({
+                type: "POST",
+                url: "get_branch.php",
+                data: { getItemIDs: true },
+                success: function (response) {
+                    $("#itemID").html("<option value=''>Select Item ID</option>" + response);
+                },
+                error: function () {
+                    console.error("Error fetching item IDs");
+                }
+            });
+
+            // Fetch origin branch when item selected
+            $("#itemID").change(function () {
+                var selectedItemId = $(this).val();
+                $.ajax({
+                    type: "POST",
+                    url: "get_branch.php",
+                    data: { itemID: selectedItemId },
+                    success: function (response) {
+                        $("#branch").val(response);
+                    },
+                    error: function () {
+                        console.error("Error fetching branch");
+                    }
+                });
+            });
+
+            // Validate branch returned before submit
+            $("#checkoutForm").submit(function (event) {
+                if ($("#branchReturned").val() === "") {
+                    alert("Please select a Branch Returned");
+                    event.preventDefault();
+                }
+            });
+
+            // Print Receipt
+            $("#printReceipt").click(function () {
+                generateReceipt();
+            });
+        });
+
+        function generateReceipt() {
+            var itemID = $("#itemID").val();
+            var branch = $("#branch").val();
+            var branchReturned = $("#branchReturned").val();
+
+            var receiptWindow = window.open("", "_blank", "width=320,height=420,scrollbars=yes,resizable=yes");
+            receiptWindow.document.write(`
+      
+      `);
+            receiptWindow.document.close();
+
+            receiptWindow.document.getElementById("printBtn").addEventListener("click", function () {
+                receiptWindow.print();
+            });
+            receiptWindow.document.getElementById("closeBtn").addEventListener("click", function () {
+                receiptWindow.close();
+            });
+        }
+    </script>
+</body>
+
+</html>

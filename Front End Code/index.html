@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wayback Public Library - Patron Account Management</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <style>
+        :root {
+            --wl-brand: #007b7b;
+            --wl-brand-dark: #005f5f;
+            --wl-accent: #ffd700;
+            --wl-bg: #e8f3f3;
+            --wl-card: #ffffff;
+            --wl-border: #d1e0e0;
+            --wl-ink: #003333;
+            --wl-ink-soft: #335f5f;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: "Segoe UI", Roboto, Arial, sans-serif;
+            background-color: var(--wl-bg);
+            color: var(--wl-ink);
+        }
+
+        /* --- Header --- */
+        .wl-header {
+            background: linear-gradient(90deg, var(--wl-brand), var(--wl-brand-dark));
+            color: #fff;
+            text-align: center;
+            border-bottom: 4px solid var(--wl-accent);
+        }
+
+        .wl-header__brand {
+            padding: 24px 16px;
+        }
+
+        .wl-title {
+            font-size: 2.2rem;
+            margin-bottom: 4px;
+        }
+
+        .wl-subtitle {
+            color: #e0f7f7;
+            font-weight: 500;
+        }
+
+        /* --- Navigation --- */
+        .wl-nav {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            background-color: var(--wl-brand-dark);
+            padding: 10px;
+        }
+
+        .wl-nav__link {
+            color: #ffffff;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 30px;
+            transition: 0.3s;
+            font-weight: 500;
+        }
+
+        .wl-nav__link:hover {
+            background-color: var(--wl-accent);
+            color: var(--wl-brand-dark);
+        }
+
+        .wl-nav__link--active {
+            background-color: var(--wl-accent);
+            color: var(--wl-brand-dark);
+            font-weight: 700;
+        }
+
+        /* --- Main Layout --- */
+        .wl-main {
+            max-width: 1100px;
+            margin: 40px auto;
+            padding: 0 16px;
+        }
+
+        .wl-card {
+            background: var(--wl-card);
+            border: 1px solid var(--wl-border);
+            border-radius: 10px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: var(--wl-brand-dark);
+            margin-bottom: 10px;
+        }
+
+        /* --- Form Grid --- */
+        .wl-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+
+        .wl-field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .wl-field span {
+            font-weight: 600;
+            color: var(--wl-ink-soft);
+        }
+
+        input,
+        select {
+            border: 1px solid var(--wl-border);
+            border-radius: 6px;
+            padding: 10px;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: var(--wl-brand);
+            box-shadow: 0 0 0 3px rgba(0, 123, 123, 0.15);
+            outline: none;
+        }
+
+        /* --- Buttons --- */
+        .wl-actions {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .wl-btn {
+            background: var(--wl-brand);
+            color: #ffffff;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.3s;
+        }
+
+        .wl-btn:hover {
+            background: var(--wl-accent);
+            color: var(--wl-brand-dark);
+        }
+
+        /* --- Table --- */
+        .wl-table-wrap {
+            overflow-x: auto;
+            border: 1px solid var(--wl-border);
+            border-radius: 8px;
+        }
+
+        .wl-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .wl-table th,
+        .wl-table td {
+            padding: 10px;
+            border-bottom: 1px solid var(--wl-border);
+            text-align: left;
+        }
+
+        .wl-table th {
+            background: var(--wl-brand);
+            color: #ffffff;
+            text-align: center;
+        }
+
+        .action-btn {
+            padding: 6px 10px;
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .edit-btn {
+            background: #1e90ff;
+        }
+
+        .delete-btn {
+            background: #ff4d4d;
+        }
+
+        .edit-btn:hover {
+            background: #63a4ff;
+        }
+
+        .delete-btn:hover {
+            background: #ff7675;
+        }
+
+        /* --- Footer --- */
+        .wl-footer {
+            background: linear-gradient(90deg, var(--wl-brand), var(--wl-brand-dark));
+            color: white;
+            text-align: center;
+            padding: 14px;
+            margin-top: 40px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- HEADER -->
+    <header class="wl-header">
+        <div class="wl-header__brand">
+            <h1 class="wl-title">Wayback Public Library</h1>
+            <p class="wl-subtitle">Your Gateway to Knowledge</p>
+        </div>
+        <nav class="wl-nav">
+            <a href="home.html" class="wl-nav__link">Home</a>
+            <a href="index.html" class="wl-nav__link wl-nav__link--active">Patron Management</a>
+            <a href="catalog.html" class="wl-nav__link">Catalog</a>
+            <a href="checkin.html" class="wl-nav__link">Check In</a>
+            <a href="checkout.html" class="wl-nav__link">Check Out</a>
+            <a href="latefees.html" class="wl-nav__link">Late Fees</a>
+            <a href="Return.html" class="wl-nav__link">Return</a>
+        </nav>
+    </header>
+
+    <!-- MAIN -->
+    <main class="wl-main">
+        <div class="wl-card">
+            <h2>Add / Update Patron</h2>
+            <form id="patronForm">
+                <div class="wl-grid">
+                    <div class="wl-field"><span>First Name</span><input id="firstName" required></div>
+                    <div class="wl-field"><span>Last Name</span><input id="lastName" required></div>
+                    <div class="wl-field"><span>Birth Date</span><input type="date" id="birthDate" required></div>
+                    <div class="wl-field"><span>Phone</span><input id="phoneNumber" required></div>
+                    <div class="wl-field"><span>Email</span><input type="email" id="email"></div>
+                    <div class="wl-field"><span>Street</span><input id="street" required></div>
+                    <div class="wl-field"><span>City</span><input id="city" required></div>
+                    <div class="wl-field"><span>Country</span>
+                        <select id="country" required>
+                            <option value="">Select</option>
+                            <option>United States</option>
+                            <option>Canada</option>
+                        </select>
+                    </div>
+                    <div class="wl-field"><span>State</span><input id="state"></div>
+                    <div class="wl-field"><span>Zip</span><input id="zipcode" type="number" required></div>
+                    <div class="wl-field"><span>Identity Confirmed</span>
+                        <select id="identityConfirmed" required>
+                            <option value="">Select</option>
+                            <option>Yes</option>
+                            <option>No</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="wl-actions">
+                    <button type="submit" id="addBtn" class="wl-btn">Add Patron</button>
+                    <button type="button" id="updateBtn" class="wl-btn" style="display:none;background:#1e90ff;">Update
+                        Patron</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Table -->
+        <div class="wl-card">
+            <h2>Patron List</h2>
+            <div class="wl-table-wrap">
+                <table class="wl-table" id="patronTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>First</th>
+                            <th>Last</th>
+                            <th>Birth Date</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>City</th>
+                            <th>Country</th>
+                            <th>Identity</th>
+                            <th>Expires</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="patronTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <footer class="wl-footer">&copy; 2025 Wayback Public Library</footer>
+
+    <!-- ✅ JS Logic -->
+    <script>
+        $(document).ready(function () {
+            let patronID = 0;
+            let editRow = null;
+
+            // ADD Patron
+            $("#patronForm").on("submit", function (e) {
+                e.preventDefault();
+                patronID++;
+                const newRow = `
+          <tr>
+            <td>${patronID}</td>
+            <td>${$("#firstName").val()}</td>
+            <td>${$("#lastName").val()}</td>
+            <td>${$("#birthDate").val()}</td>
+            <td>${$("#email").val()}</td>
+            <td>${$("#phoneNumber").val()}</td>
+            <td>${$("#city").val()}</td>
+            <td>${$("#country").val()}</td>
+            <td>${$("#identityConfirmed").val()}</td>
+            <td>${new Date().getFullYear() + 1}-12-31</td>
+            <td>
+              <button class="action-btn edit-btn">Edit</button>
+              <button class="action-btn delete-btn">Delete</button>
+            </td>
+          </tr>
+        `;
+                $("#patronTableBody").append(newRow);
+                this.reset();
+            });
+
+            // DELETE Patron
+            $(document).on("click", ".delete-btn", function () {
+                $(this).closest("tr").remove();
+            });
+
+            // EDIT Patron
+            $(document).on("click", ".edit-btn", function () {
+                editRow = $(this).closest("tr");
+                const tds = editRow.children("td");
+
+                $("#firstName").val(tds.eq(1).text());
+                $("#lastName").val(tds.eq(2).text());
+                $("#birthDate").val(tds.eq(3).text());
+                $("#email").val(tds.eq(4).text());
+                $("#phoneNumber").val(tds.eq(5).text());
+                $("#city").val(tds.eq(6).text());
+                $("#country").val(tds.eq(7).text());
+                $("#identityConfirmed").val(tds.eq(8).text());
+
+                $("#addBtn").hide();
+                $("#updateBtn").show();
+            });
+
+            // UPDATE Patron
+            $("#updateBtn").on("click", function () {
+                if (editRow) {
+                    const updatedRow = `
+            <td>${editRow.find("td").eq(0).text()}</td>
+            <td>${$("#firstName").val()}</td>
+            <td>${$("#lastName").val()}</td>
+            <td>${$("#birthDate").val()}</td>
+            <td>${$("#email").val()}</td>
+            <td>${$("#phoneNumber").val()}</td>
+            <td>${$("#city").val()}</td>
+            <td>${$("#country").val()}</td>
+            <td>${$("#identityConfirmed").val()}</td>
+            <td>${new Date().getFullYear() + 1}-12-31</td>
+            <td>
+              <button class="action-btn edit-btn">Edit</button>
+              <button class="action-btn delete-btn">Delete</button>
+            </td>
+          `;
+                    editRow.html(updatedRow);
+                    $("#patronForm")[0].reset();
+                    $("#addBtn").show();
+                    $("#updateBtn").hide();
+                    editRow = null;
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

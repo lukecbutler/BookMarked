@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wayback Public Library - Check Out</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <style>
+        :root {
+            --teal: #007b7b;
+            --teal-dark: #005f5f;
+            --gold: #ffd700;
+            --white: #ffffff;
+            --bg: #f2f9f9;
+            --text-dark: #003333;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text-dark);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            background: linear-gradient(90deg, var(--teal), var(--teal-dark));
+            color: white;
+            text-align: center;
+            padding: 2rem 1rem 1rem 1rem;
+            box-shadow: var(--shadow);
+        }
+
+        header h1 {
+            font-size: 2.2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        nav {
+            background-color: var(--teal-dark);
+            border-bottom: 4px solid var(--gold);
+            box-shadow: var(--shadow);
+        }
+
+        nav ul {
+            display: flex;
+            justify-content: center;
+            list-style: none;
+            padding: 0.75rem 0;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: white;
+            font-weight: 600;
+            padding: 8px 18px;
+            border-radius: 30px;
+            transition: all 0.3s ease;
+        }
+
+        nav a:hover {
+            background-color: var(--gold);
+            color: var(--teal-dark);
+        }
+
+        nav a.active {
+            background-color: var(--gold);
+            color: var(--teal-dark);
+            font-weight: 700;
+        }
+
+        main {
+            flex: 1;
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            animation: fadeIn 0.8s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            color: var(--teal-dark);
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: var(--teal);
+            box-shadow: 0 0 0 3px rgba(0, 123, 123, 0.15);
+            outline: none;
+        }
+
+        button {
+            background-color: var(--teal);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow);
+            margin: 10px;
+        }
+
+        button:hover {
+            background-color: var(--gold);
+            color: var(--teal-dark);
+            transform: translateY(-2px);
+        }
+
+        footer {
+            text-align: center;
+            background: linear-gradient(90deg, var(--teal), var(--teal-dark));
+            color: white;
+            padding: 1rem;
+            border-top: 4px solid var(--gold);
+            margin-top: auto;
+        }
+
+        #resultMessage {
+            text-align: center;
+            font-weight: 600;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Wayback Public Library</h1>
+        <p>Your Gateway to Knowledge</p>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="home.html">Home</a></li>
+            <li><a href="index.html">Patron Management</a></li>
+            <li><a href="catalog.html">Catalog</a></li>
+            <li><a href="checkin.html">Check In</a></li>
+            <li><a href="checkout.html" class="active">Check Out</a></li>
+            <li><a href="latefees.html">Late Fees</a></li>
+            <li><a href="putback.html">Put Item Back</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <h1>Library Check-Out</h1>
+
+        <form id="checkoutForm">
+            <div class="form-group">
+                <label for="patronID">Patron ID:</label>
+                <input type="text" id="patronID" placeholder="Enter Patron ID" required>
+            </div>
+
+            <div class="form-group">
+                <label for="itemID">Item ID:</label>
+                <input type="text" id="itemID" placeholder="Enter Item ID" required>
+            </div>
+
+            <div class="form-group">
+                <label for="checkoutDate">Check-Out Date:</label>
+                <input type="date" id="checkoutDate" required>
+            </div>
+
+            <div class="form-group">
+                <label for="dueDate">Due Date:</label>
+                <input type="date" id="dueDate" readonly>
+            </div>
+
+            <div style="text-align:center;">
+                <button type="submit">Check Out</button>
+            </div>
+        </form>
+
+        <p id="resultMessage"></p>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Wayback Public Library</p>
+    </footer>
+
+    <script>
+        // --- Pre-load today's date ---
+        document.addEventListener("DOMContentLoaded", () => {
+            const today = new Date();
+            today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+            document.getElementById("checkoutDate").value = today.toISOString().split("T")[0];
+        });
+
+        // ---------- CHECKOUT LOGIC ----------
+        document.getElementById("checkoutForm").addEventListener("submit", function (e) {
+            e.preventDefault();
+            const patronID = document.getElementById("patronID").value.trim();
+            const itemID = document.getElementById("itemID").value.trim();
+
+            if (!patronID || !itemID) {
+                showMessage("❌ Please enter both Patron ID and Item ID.", "red");
+                return;
+            }
+
+            if (!checkAccount(patronID)) {
+                if (confirm("⚠️ Account expired. Would you like to extend it?")) {
+                    extendAccount(patronID);
+                } else {
+                    showMessage("Transaction cancelled due to expired account.", "red");
+                    return;
+                }
+            }
+
+            if (checkLateFees(patronID)) {
+                closeTransaction();
+                return;
+            }
+
+            if (checkItemLimit(patronID)) {
+                showMessage("❌ Patron has reached the maximum number of checkouts.", "red");
+                return;
+            }
+
+            const dueDate = calculateDueDate();
+            document.getElementById("dueDate").value = dueDate;
+            recordCheckout(patronID, itemID, dueDate);
+            showMessage(`✅ Checkout recorded successfully! Due Date: ${dueDate}`, "green");
+        });
+
+        // ---------- FUNCTIONS ----------
+        function checkAccount(patronID) {
+            // Simulate expired account for Patron 202
+            return patronID !== "202";
+        }
+
+        function extendAccount(patronID) {
+            showMessage(`🔄 Account for Patron ${patronID} extended successfully.`, "blue");
+            console.log(`Extended account for Patron ${patronID}`);
+        }
+
+        function checkLateFees(patronID) {
+            // Simulate late fee for Patron 101
+            return patronID === "101";
+        }
+
+        function closeTransaction() {
+            showMessage("⚠️ Transaction closed due to unpaid late fees.", "red");
+        }
+
+        function checkItemLimit(patronID) {
+            // Simulate item limit reached for Patron 303
+            return patronID === "303";
+        }
+
+        function recordCheckout(patronID, itemID, dueDate) {
+            console.log(`Checkout Recorded: Patron ${patronID}, Item ${itemID}, Due ${dueDate}`);
+            // Simulated DB insert (could later become AJAX call)
+        }
+
+        function calculateDueDate() {
+            const checkoutDate = new Date(document.getElementById("checkoutDate").value);
+            checkoutDate.setDate(checkoutDate.getDate() + 14);
+            return checkoutDate.toISOString().split("T")[0];
+        }
+
+        function showMessage(text, color) {
+            const msg = document.getElementById("resultMessage");
+            msg.textContent = text;
+            msg.style.color = color;
+        }
+    </script>
+</body>
+
+</html>
