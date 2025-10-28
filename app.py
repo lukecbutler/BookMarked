@@ -246,82 +246,74 @@ def api_items_for_patron() -> jsonify:
         .all()
     )
 
-    @app.route('/api/items-to-reshelve', methods=['GET'])
-    def get_items_to_reshelve():
-        '''
-        Identifies and returns a list of all items that have been returned, 
-        but not yet marked as available
-        '''
-        try:
-        # This query finds items that are 
-        # 1. In library item table
-        # 2. Marked as unavailable (Availability == False)
-        # 3. Have a corresponding return record
-            items_awaiting_reshelve = (
-                database.session.query(LibraryItem)
-                .join(Checkout, LibraryItem.ItemID == Checkout.ItemID)
-                .join(Return, Checkout.TransactionID == Return.TransactionID)
-                .filter(LibraryItem.Availability == False)
-                .distinct(LibraryItem.ItemID)
-                .order_by(LibraryItem.ItemTitle)
-                .all()         # Item is not yet available
-            )
+@app.route('/api/items-to-reshelve', methods=['GET'])
+def get_items_to_reshelve():
+    '''
+    Identifies and returns a list of all items that have been returned, 
+    but not yet marked as available
+    '''
+    try:
+    # This query finds items that are 
+    # 1. In library item table
+    # 2. Marked as unavailable (Availability == False)
+    # 3. Have a corresponding return record
+        items_awaiting_reshelve = (
+            database.session.query(LibraryItem)
+            .join(Checkout, LibraryItem.ItemID == Checkout.ItemID)
+            .join(Return, Checkout.TransactionID == Return.TransactionID)
+            .filter(LibraryItem.Availability == False)
+            .distinct(LibraryItem.ItemID)
+            .order_by(LibraryItem.ItemTitle)
+            .all()         # Item is not yet available
+        )
 
-            #format list for front end
-            output_list = [
-                {
-                    "ItemID": item.ItemID,
-                    "ItemTitle": item.ItemTitle,
-                    "ShelfCode": item.ShelfCode
-                }
-                for item in items_awaiting_reshelve
-            ]
-            
-            return jsonify(output_list)
+        #format list for front end
+        output_list = [
+            {
+                "ItemID": item.ItemID,
+                "ItemTitle": item.ItemTitle,
+                "ShelfCode": item.ShelfCode
+            }
+            for item in items_awaiting_reshelve
+        ]
         
-        except Exception as e:
-            return jsonify({"ok": False, "error": f"Database error: {str(e)}"}), 500
-        
-    @app.route('/api/reshelve', methods=['POST'])
-    def reshelve_items():
-        '''
-        Handles the reshelveing of a single item, making 
-        it available and logging the reshelve date.
-        '''
-        payload = request.get_json(silent=True) or request.form
-        item_id = int(payload.get('item_id', -1))
-                      
-        if item_id == -1:
-            return jsonify({"ok": False, "error": "ItemID is required"}), 400
-        
-        item = LibraryItem.query.get(item_id)
+        return jsonify(output_list)
+    
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Database error: {str(e)}"}), 500
+    
+@app.route('/api/reshelve', methods=['POST'])
+def reshelve_items():
+    '''
+    Handles the reshelveing of a single item, making 
+    it available and logging the reshelve date.
+    '''
+    payload = request.get_json(silent=True) or request.form
+    item_id = int(payload.get('item_id', -1))
+                  
+    if item_id == -1:
+        return jsonify({"ok": False, "error": "ItemID is required"}), 400
+    
+    # Use database.session.get() which is the modern way
+    item = database.session.get(LibraryItem, item_id)
 
-        if item is None:
-            return jsonify({"ok": False, "error": f"Item with ID {item_id} not found"}), 404
-        
-        #update items vailability and reshelve date
-        try:
-            item.Availability = True
-            item.DateReshelved = date.today()
-            database.session.commit()
+    if item is None:
+        return jsonify({"ok": False, "error": f"Item with ID {item_id} not found"}), 404
+    
+    #update items vailability and reshelve date
+    try:
+        item.Availability = True
+        item.DateReshelved = date.today()
+        database.session.commit()
 
-            return jsonify({
-                "ok": True,
-                "message": f"Item '{item.ItemTitle}' (ID: {item.ItemID}) reshelved successfully.",
-            })
-        
-        except Exception as e:
-            database.session.rollback()
-            return jsonify({"ok": False, "error": f"Database error: {str(e)}"}), 500
-
-    item_list = [ # Create the JSON list that is returned
-        {
-            "ItemID": item.ItemID,
-            "ItemTitle": item.ItemTitle
-        }
-        for item in items_for_patron
-    ]
-    return jsonify(item_list)
+        return jsonify({
+            "ok": True,
+            "message": f"Item '{item.ItemTitle}' (ID: {item.ItemID}) reshelved successfully.",
+        })
+    
+    except Exception as e:
+        database.session.rollback()
+        return jsonify({"ok": False, "error": f"Database error: {str(e)}"}), 500
 
 
 
