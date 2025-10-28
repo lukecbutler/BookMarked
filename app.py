@@ -1,7 +1,7 @@
 import os
 from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
-from datetime import date
+from datetime import date,timedelta
 
 app = Flask(__name__)
 
@@ -251,6 +251,47 @@ def api_items_for_patron() -> jsonify:
         for item in items_for_patron
     ]
     return jsonify(item_list)
+# Extend Membership card
+@app.route('/api/check_membership', methods=['GET'])
+def check_membership():
+    """Check if a patron's account is expired."""
+    patron_id = request.args.get('patron_id', type=int)
+    patron = Patron.query.get(patron_id)
+
+    if not patron:
+        return jsonify({"ok": False, "error": "Patron not found"}), 404
+
+    expired = membership_expired(patron)
+    return jsonify({
+        "ok": True,
+        "patron_id": patron.PatronID,
+        "expired": expired,
+        "expiration_date": str(patron.AccountExpDate)
+    })
+
+
+@app.route('/api/extend_membership', methods=['POST'])
+def extend_membership():
+    """Extend a patron's membership by a number of days."""
+    payload = request.get_json(silent=True) or request.form
+    patron_id = int(payload.get("patron_id", -1))
+    days = int(payload.get("days", 365))  # default 1 year
+
+    patron = Patron.query.get(patron_id)
+    if not patron:
+        return jsonify({"ok": False, "error": "Patron not found"}), 404
+
+    current = patron.AccountExpDate
+    base_date = date.today() if (current is None or current < date.today()) else current
+    patron.AccountExpDate = base_date + timedelta(days=days)
+
+    database.session.commit()
+
+    return jsonify({
+        "ok": True,
+        "message": f"Membership extended by {days} days.",
+        "new_expiration": str(patron.AccountExpDate)
+    })
 
 
 
