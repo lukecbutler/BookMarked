@@ -1,18 +1,56 @@
 ## Meeting 2 Questions ##
-1. Does sending fee dues to patrons homes need to be apart of the user story
-    Is it a req. you desire, to send a physical letter, ie. their home address will need to be inputted
+1. How & where would you like the notification to appear if the patron cannot checkout an item in the library due to current fines?
+1A:
 
-2. If when system checks for late fee, should the transaction automatically close?
+Priority of checks in checkout:
+    1. Check the library card expiration date first
+        if expired - create new expiration date [have an option for extending expiration date given to the user]
+    2. Check fine balance second
+        if fines - if the patron can pay, set fine amount to 0, then continue
+        else: the patron cannot pay, close the transaction
+    3. Check number of books
+        if 20 or more books - prompt saying 'patron has exceeded number of checkouts, please check in a book to checkout another one'
+        then button that say's 'close transaction'
 
-3. Does library card expiration & number of items limit need to be checked out initially.
+**always give note of entire process to the user, 
+as if they have never used the system before**
 
-4. Do we need a way to pay the patron's late fee's in these user stories.
+Checkin & Reshelve are high priority
 
-5. In general, what are you looking for in a product?
-4. Do we need a way to pay the patron's late fee's in these user stories
+The client just tells you what they want
+The team decides what to actually work on, to have a finished project. e.g. if there are 100 wishes, and we can only do 10, we need to decide which 10 provide the most value. 
 
 
+2. Personal Q - From what you have seen so far, what are points of what I should be focused on improving personally?
+    1. She would like to see the flow from the client -> product owner -> analysts -> developers
 
+* Create mockup of designs/ flow and bring to dr. G
+
+* groups should be confirming with client (dr. G) about flow of process in web application before developing, as she is the client and needs to like it.
+
+
+Patrons should be getting late fees based on every single late book they return. 
+
+
+e.g. Patron returns a book late, they are charged for every day late for that book. If they turn in a different book a different amount of days late, they are charged that amount of days late feee for that book.
+
+
+late fees are added to their account for each late book for each day late
+
+------------------------------
+Dr. G decides the rules
+We decide what we can build
+------------------------------
+# Improve task board - make tasks smaller - everyone needs tasks
+
+# Use Trello board more & properly
+
+# Dr. G really think we need to work on team workflow & trello board
+
+# Include wireframe of user stories before you build it. -> Then run it by the client
+
+# Design in figma/justinmind before building
+# Don't run to far if you don't know what they want
 
 
 

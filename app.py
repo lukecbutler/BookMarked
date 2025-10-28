@@ -92,7 +92,10 @@ MAX_ITEMS_PER_PATRON = 20
 def home():
     return render_template('index.html')
 
-@app.route('/patrons')
+
+
+#### API Endpoints for Dropdown Menu's on Front-end ####
+@app.route('/patrons') #is this the api route for patrons
 def patrons() -> jsonify:
     '''This route returns JSON data of all patrons in the database'''
     all_patrons = Patron.query.all()
@@ -109,11 +112,9 @@ def patrons() -> jsonify:
 
     return jsonify(patrons_list)
 
-
-#### API Endpoints for Dropdown Menu's on Front-end ####
-@app.route('/api/itemtypes')
+@app.route('/api/itemtypes') 
 def api_item_types() -> jsonify:
-    '''This function returns all item types from the database in JSON format'''
+    '''This api returns all item types from the database in JSON format'''
     
     all_types = ItemType.query.order_by(ItemType.TypeName).all() # Query all ItemType objects from the db
     types_list = [] # Init empty list to store JSON dicts
@@ -129,8 +130,8 @@ def api_item_types() -> jsonify:
     return jsonify(types_list) # Convert the list of dictionaries to a JSON response
 
 @app.route('/api/items')
-def api_items_by_type():
-    '''This function returns list all library items (ID & Title) in JSON format'''
+def api_items_by_type() -> jsonify:
+    '''This api returns all library items[ID & Title] in JSON format'''
     type_id_from_url = request.args.get('type_id', '').strip() # check for query parameter in url
 
     query = LibraryItem.query
@@ -149,11 +150,199 @@ def api_items_by_type():
         output_list.append(item_data)
     return jsonify(output_list)
 
+@app.route('/api/patrons-with-checkouts')
+def api_patrons_with_checkouts() -> jsonify:
+    '''
+    This api returns JSON of all library items a patron has checked out 
+    Item is 'CheckedOut' when Availability == False and no Return record
+    '''
+    active_checkout_patrons = (
+        database.session.query(Patron) # create db query
+        .join(Checkout, Patron.PatronID == Checkout.PatronID)
+        .join(LibraryItem, Checkout.ItemID == LibraryItem.ItemID)
+        .outerjoin(Return, Checkout.TransactionID == Return.TransactionID)
+        .filter(
+            LibraryItem.Availability == False, # Item is not on shelf
+            Return.TransactionID.is_(None)     # and item is not yet returned
+        )
+        .distinct(Patron.PatronID) 
+        .order_by(Patron.PatronLN, Patron.PatronFN)
+        .all()
+    )
+    
+    patron_list = [ # Create JSON of patrons that have items checked out
+        {
+            "PatronID": p.PatronID,
+            "PatronName": f"{p.PatronLN}, {p.PatronFN}" 
+        }
+        for p in active_checkout_patrons
+    ]
+    return jsonify(patron_list)
 
 
-# Checkout demo page + post
+@app.route('/api/checkedout')
+def api_checked_out_items() -> jsonify:
+    """
+    API endpoint returns list of all items currently in the 'CheckedOut' state.
+    """
+    query = (
+        LibraryItem.query
+        .join(Checkout, LibraryItem.ItemID == Checkout.ItemID)
+        .outerjoin(Return, Checkout.TransactionID == Return.TransactionID)
+        .filter(
+            LibraryItem.Availability == False, # Item is not on shelf
+            Return.TransactionID.is_(None)     # AND not yet returned - this results in checked out state
+        )
+    )
+
+    items_from_db = query.order_by(LibraryItem.ItemID).all() # Order by ItemID
+
+    output_list = [] # Create JSON list of all items currently in checked out state
+    for item in items_from_db: 
+        item_data = {
+            "ItemID": item.ItemID,
+            "ItemTitle": item.ItemTitle
+        }
+        output_list.append(item_data)
+    return jsonify(output_list)
+
+@app.route('/api/branches')
+def api_branches():
+    '''API endpoint that returns all library branches'''
+    all_branches = LibraryBranch.query.order_by(LibraryBranch.BranchName).all()
+    branch_list = [ # create list for json to be returned
+        {"BranchID": branch.BranchID, "BranchName": branch.BranchName}
+        for branch in all_branches
+    ]
+    return jsonify(branch_list)
+
+
+@app.route('/api/items-for-patron')
+def api_items_for_patron() -> jsonify:
+    '''
+    Returns a JSON list of items in the 'CheckedOut' state for a specific patron.
+    Accepts a URL query parameter: /api/items-for-patron?patron_id=patronid
+    '''
+    patron_id_str = request.args.get('patron_id', '').strip() # get query parameter
+
+    if not patron_id_str.isdigit(): # check if query parameter is a digit
+        return jsonify({"error": "Valid PatronID is required"}), 400
+
+    patron_id = int(patron_id_str) # change string to an int
+
+    items_for_patron = ( # Find items for this patron that are 'CheckedOut'
+        database.session.query(LibraryItem)
+        .join(Checkout, LibraryItem.ItemID == Checkout.ItemID)
+        .outerjoin(Return, Checkout.TransactionID == Return.TransactionID)
+        .filter(
+            Checkout.PatronID == patron_id,
+            LibraryItem.Availability == False, # Item is not on shelf
+            Return.TransactionID.is_(None)     # AND not yet returned
+        )
+        .order_by(LibraryItem.ItemTitle)
+        .all()
+    )
+
+    item_list = [ # Create the JSON list that is returned
+        {
+            "ItemID": item.ItemID,
+            "ItemTitle": item.ItemTitle
+        }
+        for item in items_for_patron
+    ]
+    return jsonify(item_list)
+
+
+
+
+# Checkin demo
 #---------------------------
+@app.route('/checkin', methods=['GET'])
+def checkin_form():
+    return render_template('checkin.html')
 
+@app.route('/checkin', methods=['POST'])
+def checkin_item() -> jsonify:
+    '''
+    This function processes a check-in transaction.
+    Also moves an item from 'CheckedOut' to 'CheckedIn' state.
+    It does NOT make the item 'Available' - that is the purpose of the 'reshelve' function
+    '''
+    payload = request.get_json(silent=True) or request.form # get json of form submision
+    item_id_str = payload.get('item_id', '').strip() # get item_id & branch_id from form submission - clear any accidental whitespace
+    branch_id_str = payload.get('branch_id', '').strip()
+
+    if not item_id_str.isdigit() or not branch_id_str.isdigit(): # Raise error if item_id or branch_id is not a digit
+        return jsonify({"ok": False, "error": "Invalid ItemID or BranchID"}), 400
+    
+    item_id = int(item_id_str) # Set item and branch id to integer for query
+    branch_id = int(branch_id_str)
+
+    branch = LibraryBranch.query.get(branch_id) # query for branch object
+    if not branch: # raise error if the branch is not found
+            return jsonify({"ok": False, "error": "Branch not found"}), 404
+
+    # Find Active checkout - active checkout is one with this ItemID that has no corresponding return record (based on return id)
+    active_checkout = (
+        Checkout.query # Query checkout table
+        .outerjoin(Return, Return.TransactionID == Checkout.TransactionID) 
+        .filter(
+            Checkout.ItemID == item_id,
+            Return.TransactionID.is_(None) # No return record exists
+        )
+        .first()
+    )
+
+    # shouldn't need this but it's a double check on the js
+    if not active_checkout: # If no active checkout is found, it's either already 'Available' or 'CheckedIn'
+        item_check = LibraryItem.query.get(item_id)
+        if item_check and item_check.Availability:
+                return jsonify({"ok": False, "error": "This item is already 'Available'"}), 400
+        else:
+                return jsonify({"ok": False, "error": "This item is already 'CheckedIn' and awaiting reshelving"}), 400
+
+    item = LibraryItem.query.get(item_id) # Get the item object
+    patron = Patron.query.get(active_checkout.PatronID) # Get the patron object
+
+    if not item or not patron: #check against database error - if this hits check the db
+            return jsonify({"ok": False, "error": "Internal Error: Item or Patron record missing"}), 500 
+
+    try:
+        # 1. Create the Return record
+        new_return = Return(
+            TransactionID=active_checkout.TransactionID,
+            DateReturned=date.today(),
+            BranchReturnedTo=branch_id
+        )
+        database.session.add(new_return) # add new return entry to the db - by adding return the item's logical state is changed from 'CheckedOut' to 'CheckedIn'
+
+        # item.Availability stays 'False'.
+        # To update Item Availability add to the 'Return' record, the item's state is now 'CheckIn'.
+
+        # 3. Update Patron's item count - reduce it by 1
+        current_count = patron.ItemsCheckedOut or 0
+        if current_count > 0:
+            patron.ItemsCheckedOut = current_count - 1
+
+        database.session.commit() # commit changes to the db
+
+        return jsonify({ # return messsage check in was successful
+            "ok": True,
+            "message": f"Item '{item.ItemTitle}' checked in successfully. Awaiting reshelving.",
+            "item_id": item.ItemID,
+            "patron_id": patron.PatronID,
+            "patron_name": f"{patron.PatronFN} {patron.PatronLN}",
+            "return_date": str(date.today())
+        })
+
+    except Exception as e:
+        database.session.rollback()
+        app.logger.error(f"Error during checkin: {e}")
+        return jsonify({"ok": False, "error": f"A database error occurred: {e}"}), 500
+
+
+# Checkout demo
+#---------------------------
 @app.route('/checkout', methods=['GET'])
 def checkout_form():
     return render_template('checkout.html') # loading demo page for now
@@ -167,14 +356,11 @@ def checkout_basic() -> jsonify:
     patron = Patron.query.get(patron_id)
     item = LibraryItem.query.get(item_id)
 
-    # if patron exists
     if patron is None:
         return jsonify({"ok": False, "error": "Patron not found"})
-    # if item exists
     if item is None:
         return jsonify({"ok": False, "error": "Item not found"})
 
-    # check for expired membership
     if membership_expired(patron):
         return jsonify({
             "ok": False,
@@ -182,11 +368,12 @@ def checkout_basic() -> jsonify:
             "expired_on": str(patron.AccountExpDate)
         })
 
-    # check availability
-    if item.Availability is False:
-        return jsonify({"ok": False, "error": "Item not available"})
+    # --- UPDATED AVAILABILITY CHECK ---
+    if item.Availability is not True:
+        # We can't easily tell if it's 'CheckedOut' or 'CheckedIn'
+        # without another query, so a generic message is best.
+        return jsonify({"ok": False, "error": "Item is not currently available."})
 
-    # check if patron at 20 items
     current_count = patron.ItemsCheckedOut or 0
     if current_count >= MAX_ITEMS_PER_PATRON:
         return jsonify({"ok": False, "error": "Individual checkout limit reached (20 items)"})
@@ -198,12 +385,15 @@ def checkout_basic() -> jsonify:
         CheckoutDate=date.today()
     )
     database.session.add(new_checkout)
-    # update item and patron info
-    item.Availability = False
+    
+    # --- UPDATE ITEM STATUS ---
+    # Set the status to False (it is no longer 'Available')
+    item.Availability = False 
+    
     patron.ItemsCheckedOut = current_count + 1
     database.session.commit()
 
-    #showing currently checkedout items for patron
+    # (Your existing logic for showing checked out items is fine)
     active_checkouts = (
         database.session.query(Checkout, LibraryItem, Patron)
         .join(LibraryItem, Checkout.ItemID == LibraryItem.ItemID)
@@ -235,10 +425,8 @@ def checkout_basic() -> jsonify:
         "patron_id": patron_id,
         "item_id": item_id,
         "checkout_date": str(date.today()),
-        "checked_out": checked_out_list
+        "checked_out": item.ItemTitle # checked_out_list # replace with the single item just checked out
     })
-
-
 
 # Utility
 # ----------------------------
@@ -247,13 +435,10 @@ def dbinfo():
     return jsonify({"db_uri":app.config['SQLALCHEMY_DATABASE_URI']})
 
 
-
-
 # --- Main execution block ---
 if __name__ == '__main__':
 
     with app.app_context():
         database.create_all()
 
-    #BERKER: Updated port to 5001, had problems with 80.
     app.run(debug=True, host='0.0.0.0', port=5001)
