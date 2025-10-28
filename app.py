@@ -2,8 +2,10 @@ import os
 from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 from datetime import date
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
 # Create db route
 db_dir = app.instance_path
@@ -42,6 +44,7 @@ class LibraryItem(database.Model):
     ItemTitle = database.Column(database.String(50))
     Availability = database.Column(database.Boolean)
     ShelfCode = database.Column(database.String(5))
+    DateReshelved = database.Column(database.Date, nullable=True)
 
 class Patron(database.Model):
     __tablename__ = 'Patron'
@@ -134,7 +137,7 @@ def api_items_by_type() -> jsonify:
     '''This api returns all library items[ID & Title] in JSON format'''
     type_id_from_url = request.args.get('type_id', '').strip() # check for query parameter in url
 
-    query = LibraryItem.query
+    query = LibraryItem.query.filter(LibraryItem.Availability == True)
     if type_id_from_url.isdigit(): 
         query = query.filter(LibraryItem.ItemType == int(type_id_from_url))
 
@@ -242,6 +245,74 @@ def api_items_for_patron() -> jsonify:
         .order_by(LibraryItem.ItemTitle)
         .all()
     )
+
+    @app.route('/api/items-to-reshelve', methods=['GET'])
+    def get_items_to_reshelve():
+        '''
+        Identifies and returns a list of all items that have been returned, 
+        but not yet marked as available
+        '''
+        try:
+        # This query finds items that are 
+        # 1. In library item table
+        # 2. Marked as unavailable (Availability == False)
+        # 3. Have a corresponding return record
+            items_awaiting_reshelve = (
+                database.session.query(LibraryItem)
+                .join(Checkout, LibraryItem.ItemID == Checkout.ItemID)
+                .join(Return, Checkout.TransactionID == Return.TransactionID)
+                .filter(LibraryItem.Availability == False)
+                .distinct(LibraryItem.ItemID)
+                .order_by(LibraryItem.ItemTitle)
+                .all()         # Item is not yet available
+            )
+
+            #format list for front end
+            output_list = [
+                {
+                    "ItemID": item.ItemID,
+                    "ItemTitle": item.ItemTitle,
+                    "ShelfCode": item.ShelfCode
+                }
+                for item in items_awaiting_reshelve
+            ]
+            
+            return jsonify(output_list)
+        
+        except Exception as e:
+            return jsonify({"ok": False, "error": f"Database error: {str(e)}"}), 500
+        
+    @app.route('/api/reshelve', methods=['POST'])
+    def reshelve_items():
+        '''
+        Handles the reshelveing of a single item, making 
+        it available and logging the reshelve date.
+        '''
+        payload = request.get_json(silent=True) or request.form
+        item_id = int(payload.get('item_id', -1))
+                      
+        if item_id == -1:
+            return jsonify({"ok": False, "error": "ItemID is required"}), 400
+        
+        item = LibraryItem.query.get(item_id)
+
+        if item is None:
+            return jsonify({"ok": False, "error": f"Item with ID {item_id} not found"}), 404
+        
+        #update items vailability and reshelve date
+        try:
+            item.Availability = True
+            item.DateReshelved = date.today()
+            database.session.commit()
+
+            return jsonify({
+                "ok": True,
+                "message": f"Item '{item.ItemTitle}' (ID: {item.ItemID}) reshelved successfully.",
+            })
+        
+        except Exception as e:
+            database.session.rollback()
+            return jsonify({"ok": False, "error": f"Database error: {str(e)}"}), 500
 
     item_list = [ # Create the JSON list that is returned
         {
@@ -433,6 +504,26 @@ def checkout_basic() -> jsonify:
 @app.route('/dbinfo', methods=['GET'])
 def dbinfo():
     return jsonify({"db_uri":app.config['SQLALCHEMY_DATABASE_URI']})
+
+
+# --- ADD THIS NEW FUNCTION ---
+@app.route('/routes')
+def list_routes():
+    '''A debug route to list all available routes in the app.'''
+    import urllib
+    output = []
+    for rule in app.url_map.iter_rules():
+        options = {}
+        for arg in rule.arguments:
+            options[arg] = f"[{arg}]"
+
+        methods = ','.join(rule.methods)
+        url = urllib.parse.unquote(str(rule))
+        line = f"{url:35s} {methods:20s} {rule.endpoint}"
+        output.append(line)
+
+    return "<pre>" + "\n".join(sorted(output)) + "</pre>"
+# --- END OF NEW FUNCTION ---
 
 
 # --- Main execution block ---

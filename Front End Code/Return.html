@@ -229,41 +229,76 @@
         <p>&copy; 2025 Wayback Public Library</p>
     </footer>
 
-    <script>
+<script>
         $(document).ready(function () {
+            // 1. Fetch items that need to be reshelved
             $.ajax({
-                url: 'putback_table.php',
+                url: 'http://127.0.0.1:5001/api/items-to-reshelve', // Calls your new GET endpoint
                 type: 'GET',
-                success: function (data) {
-                    $('#putbackTableContainer').html(data);
+                success: function (items) {
+                    if (items.length === 0) {
+                        $('#putbackTableContainer').html('<p>No items are currently awaiting reshelving.</p>');
+                        return;
+                    }
 
-                    $('.putBackCheckbox').on('click', function () {
-                        var itemID = $(this).data('itemid');
-                        var checkbox = $(this);
+                    // Build the table header
+                    let tableHtml = '<table><thead><tr>';
+                    tableHtml += '<th>Item ID</th>';
+                    tableHtml += '<th>Title</th>';
+                    tableHtml += '<th>Shelf Code</th>';
+                    tableHtml += '<th>Reshelve</th>';
+                    tableHtml += '</tr></thead><tbody>';
 
-                        $.ajax({
-                            url: 'update_putback.php',
-                            type: 'POST',
-                            data: { itemID: itemID },
-                            success: function () {
-                                var successMessage =
-                                    '<div class="success-message">✅ Item Put Back Successfully!</div>';
-                                checkbox.closest('tr').after(successMessage);
-                                checkbox.closest('tr').hide();
-
-                                setTimeout(function () {
-                                    checkbox.closest('tr').next().remove();
-                                }, 3000);
-                            },
-                            error: function () {
-                                console.log('Error updating item.');
-                            }
-                        });
+                    // Build table rows
+                    items.forEach(function (item) {
+                        tableHtml += `
+                            <tr id="item-row-${item.ItemID}">
+                                <td>${item.ItemID}</td>
+                                <td>${item.ItemTitle}</td>
+                                <td>${item.ShelfCode}</td>
+                                <td>
+                                    <input type="checkbox" class="putBackCheckbox" data-itemid="${item.ItemID}">
+                                </td>
+                            </tr>
+                        `;
                     });
+
+                    tableHtml += '</tbody></table>';
+                    $('#putbackTableContainer').html(tableHtml);
                 },
                 error: function () {
-                    console.log('Error fetching table data.');
+                    $('#putbackTableContainer').html('<p>Error loading items to reshelve.</p>');
                 }
+            });
+
+            // 2. Add click handler for the reshelve checkboxes
+            $(document).on('click', '.putBackCheckbox', function () {
+                var itemID = $(this).data('itemid');
+                var checkbox = $(this);
+
+                $.ajax({
+                    url: 'http://127.0.0.1:5001/api/reshelve', // Calls your new POST endpoint
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ item_id: itemID }),
+                    success: function () {
+                        // On success, show a success message and hide the row
+                        var successMessage =
+                            '<div class="success-message">✅ Item reshelved successfully!</div>';
+                        
+                        // Temporarily add a row for the message, then hide both
+                        var row = checkbox.closest('tr');
+                        row.after(successMessage);
+                        row.hide();
+
+                        setTimeout(function () {
+                            row.next('.success-message').remove();
+                        }, 3000);
+                    },
+                    error: function () {
+                        alert('Error reshelving item.');
+                    }
+                });
             });
         });
     </script>
