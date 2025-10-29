@@ -1,9 +1,10 @@
 import os
 from flask import Flask, request, jsonify, render_template_string
 from flask_sqlalchemy import SQLAlchemy
-from datetime import date
+from datetime import date, timedelta
 from flask import render_template
 
+#added time delta for due date calculations
 
 app = Flask(__name__)
 
@@ -81,6 +82,9 @@ class Return(database.Model):
 def membership_expired(patron) -> bool:
     return bool(patron and patron.AccountExpDate and patron.AccountExpDate < date.today())
 
+def rental_days_for(item: LibraryItem) -> int:
+    item_type = ItemType.query.get(item.ItemType) if item else None
+    return int(item_type.RentalLength) if (item_type and item_type.RentalLength) else 0
 
 
 # --- Routes ---
@@ -109,12 +113,25 @@ def api_items_by_type():
    #returning filtered items
     type_id_raw = request.args.get('type_id', '').strip()
 
-    q = LibraryItem.query
+#filtering types
+    available_items_query = LibraryItem.query
     if type_id_raw.isdigit():
-        q = q.filter(LibraryItem.ItemType == int(type_id_raw))
+        available_items_query = available_items_query.filter(
+            LibraryItem.ItemType == int(type_id_raw)
+        )
+    
+    available_items_query = available_items_query.filter(
+        LibraryItem.Availability == True
+    ) #available items show up onlu
 
-    items = q.order_by(LibraryItem.ItemTitle).all()
-    return jsonify([{"ItemID": i.ItemID, "ItemTitle": i.ItemTitle} for i in items])
+    available_items = available_items_query.order_by(LibraryItem.ItemTitle).all()
+
+    items_response = [
+        {"ItemID": item.ItemID, "ItemTitle": item.ItemTitle} 
+        for item in available_items
+    ]
+
+    return jsonify(items_response)
 
 
 # Checkout demo page + post
@@ -130,6 +147,7 @@ def checkout_basic():
     payload = request.get_json(silent=True) or request.form
     patron_id = int(payload.get('patron_id', -1))
     item_id = int(payload.get('item_id', -1))
+    # item_ids = payload.get('item_ids', [])  # listing items in the basket
 
     patron = Patron.query.get(patron_id)
     item = LibraryItem.query.get(item_id)
@@ -140,6 +158,9 @@ def checkout_basic():
     # if item exists
     if item is None:
         return jsonify({"ok": False, "error": "Item not found"})
+
+    # if item is None:
+    #     return jsonify({"ok": False, "error": "Item not found"})
 
     # check for expired membership
     if membership_expired(patron):
@@ -156,27 +177,74 @@ def checkout_basic():
         "error": f"fine balance of ${float(patron.FeesOwed):.2f}. clear fines first!!."
     })
 
+    # basket related testing code
+    # current_count = patron.ItemsCheckedOut or 0
+    # if current_count + len(item_ids) > MAX_ITEMS_PER_PATRON:
+    #     return jsonify({
+    #         "ok": False, 
+    #         "error": f"Basket checkout would exceed limit. You have {current_count} items, limit is {MAX_ITEMS_PER_PATRON}"
+    #     })
+    # items_to_checkout = []
+    # for single_item_id in item_ids:
+    #     item = LibraryItem.query.get(single_item_id)
+    #     # if item exists
+    #     if item is None:
+    #         return jsonify({"ok": False, "error": f"Item ID {single_item_id} not found"})
+        
+        
+    #to prevent duplicate checkouts(will test)
+    active_checkout = (
+        Checkout.query
+        .outerjoin(Return, Return.TransactionID == Checkout.TransactionID)
+        .filter(
+            Checkout.ItemID == item_id,
+            Return.TransactionID.is_(None)
+        )
+        .first()
+    )
+    if active_checkout:
+        return jsonify({
+            "ok": False, 
+            "error": f"Item '{item.ItemTitle}' is already checked out."
+            }) #should we show the librarian who the item checked out to?
+    
     # check availability
     if item.Availability is False:
-        return jsonify({"ok": False, "error": "Item not available"})
+        return jsonify({
+            "ok": False, 
+            "error": f"fine balance of ${float(patron.FeesOwed):.2f}. clear fines first!!."
+            })
+
+        # items_to_checkout.append(item)
+
 
     # check if patron at 20 items
     current_count = patron.ItemsCheckedOut or 0
     if current_count >= MAX_ITEMS_PER_PATRON:
-        return jsonify({"ok": False, "error": "Individual checkout limit reached (20 items)"})
+        return jsonify({
+            "ok": False, 
+            "error": "Individual checkout limit reached (20 items)"
+            })
     
+    #calculating due dates
+    days = rental_days_for(item)
+    due_date = date.today() + timedelta(days=days)
+
+
     # create checkout record
     new_checkout = Checkout(
         PatronID=patron_id, 
-        ItemID=item_id, 
+        ItemID=item.ItemID,
         CheckoutDate=date.today()
     )
     database.session.add(new_checkout)
+
     # update item and patron info
-    item.Availability = False
+    item.Availability = False     
+    # Update patron count once for all items
     patron.ItemsCheckedOut = current_count + 1
     database.session.commit()
-
+    
     #showing currently checkedout items for patron
     active_checkouts = (
         database.session.query(Checkout, LibraryItem, Patron)
@@ -191,17 +259,19 @@ def checkout_basic():
         .all()
     )
 
-    checked_out_list = [
-        {
-            "TransactionID": checkout.TransactionID,
-            "PatronID": patron.PatronID,
-            "PatronName": f"{patron.PatronFN} {patron.PatronLN}",
-            "ItemID": item.ItemID,
-            "ItemTitle": item.ItemTitle,
-            "CheckoutDate": str(checkout.CheckoutDate)
-        }
-        for checkout, item, patron in active_checkouts
-    ]
+    checked_out_list = []
+    for checkout_record, library_item, patron_record in active_checkouts:
+        rental_days = rental_days_for(library_item)
+        due_date = (checkout_record.CheckoutDate or date.today()) + timedelta(days=rental_days)
+        checked_out_list.append({
+            "TransactionID": checkout_record.TransactionID,
+            "PatronID": patron_record.PatronID,
+            "PatronName": f"{patron_record.PatronFN} {patron_record.PatronLN}",
+            "ItemID": library_item.ItemID,
+            "ItemTitle": library_item.ItemTitle,
+            "CheckoutDate": str(checkout_record.CheckoutDate),
+            "due_date": str(due_date)
+        })
 
     return jsonify({
         "ok": True,
@@ -209,7 +279,9 @@ def checkout_basic():
         "patron_id": patron_id,
         "item_id": item_id,
         "checkout_date": str(date.today()),
+        "due_date": str(due_date),
         "checked_out": checked_out_list
+        # "items_checked_out": len(items_to_checkout)  # (Added count of items processed, may delete(if unnecessary)
     })
 
 

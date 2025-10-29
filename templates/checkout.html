@@ -4,7 +4,7 @@
   <title>Checkout Demo</title>
 </head>
 <body>
-  <h2>Checkout (single item · demo)</h2>
+  <h2>Checkout (single item)</h2>
 
   <form method="post" action="/checkout" id="checkout-form">
     <label>Patron ID</label><br>
@@ -29,6 +29,7 @@
   <div id="picked" style="margin-top:10px; font-family: monospace;"></div>
 
   <script>
+    // Minimal JS just for dropdown population (testing only)
     async function loadTypes() {
       const resp = await fetch('/api/itemtypes');
       const types = await resp.json();

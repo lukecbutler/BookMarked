@@ -22,3 +22,4 @@ Possible Qs / Ideas
 - The per-day fine for an item is calculated based on its cost; for example, if the fine is one-tenth of the cost, a $10 item would have a $1 per-day fine.
 
 per_day_fine_in_cents=(item.cost_in_cents // 100)
+#should we show the librarian who the item checked out to?
