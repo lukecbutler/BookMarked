@@ -1,182 +1,274 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Check-in Item</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BookMarked · Check-in</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    body {
+      background: linear-gradient(135deg, rgba(232,245,233,0.5), rgba(200,230,201,0.5)),
+                  url('https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=1950&q=80');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      min-height: 100vh;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding-top: 2rem;
+    }
+
+    .header {
+      text-align: center;
+      margin-top: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .header h1 {
+      font-size: 3rem;
+      font-weight: 900;
+      color: #1b5e20;
+    }
+
+    .header p {
+      color: #333;
+      font-size: 1rem;
+    }
+
+    .card.checkin-card {
+      background: rgba(255,255,255,0.95);
+      border-radius: 20px;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+      padding: 2rem;
+      width: 100%;
+      max-width: 640px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card.checkin-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: url('https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=800&q=80')
+                  center/cover no-repeat;
+      opacity: 0.15;
+      z-index: 0;
+    }
+
+    .card.checkin-card > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .card.checkin-card h2 {
+      color: #1b5e20;
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 1.2rem;
+      text-align: center;
+    }
+
+    .form-label {
+      color: #1b5e20;
+      font-weight: 600;
+    }
+
+    .form-select {
+      background-color: #f1f8e9;
+      border-radius: 10px;
+      border: 1px solid #e0e0e0;
+    }
+    .form-select:focus {
+      border-color: #2e7d32;
+      box-shadow: 0 0 0 0.2rem rgba(46,125,50,0.15);
+      background-color: #fff;
+    }
+
+    .btn-success {
+      border-radius: 12px;
+      padding: 0.6rem;
+      font-weight: 600;
+    }
+    .btn-success:hover {
+      background-color: #1b5e20;
+    }
+
+    #message {
+      margin-top: 10px;
+      min-height: 22px;
+      font-size: 0.95rem;
+      font-family: monospace;
+      text-align: center;
+    }
+
+    footer {
+      margin-top: 1.25rem;
+      font-size: 0.9rem;
+      color: #666;
+      text-align: center;
+    }
+  </style>
 </head>
 <body>
+
+  <div class="header">
+    <h1>BookMarked</h1>
+    <p>WPL Library Software · Check-in</p>
+  </div>
+
+  <div class="card checkin-card">
     <h2>Check-in Item</h2>
 
     <form id="checkin-form">
-        
-        <label for="patron_id">Patron</label><br>
-        <select name="patron_id" id="patron_id" required>
-            <option value="">-- Select Patron --</option>
+      
+      <div class="mb-3">
+        <label for="patron_id" class="form-label">Patron</label>
+        <select name="patron_id" id="patron_id" class="form-select" required>
+          <option value="">-- Select Patron --</option>
         </select>
-        
-        <br><br>
+      </div>
 
-        <label for="item_id">Item</label><br>
-        <select name="item_id" id="item_id" required disabled>
-            <option value="">-- Select Patron First --</option>
+      <div class="mb-3">
+        <label for="item_id" class="form-label">Item</label>
+        <select name="item_id" id="item_id" class="form-select" required disabled>
+          <option value="">-- Select Patron First --</option>
         </select>
+      </div>
 
-        <br><br>
-
-        <label for="branch_id">Return Branch</label><br>
-        <select name="branch_id" id="branch_id" required>
-            <option value="">-- Select Branch --</option>
+      <div class="mb-4">
+        <label for="branch_id" class="form-label">Return Branch</label>
+        <select name="branch_id" id="branch_id" class="form-select" required>
+          <option value="">-- Select Branch --</option>
         </select>
+      </div>
 
-        <br><br>
-
-        <button type="submit">Check-in</button>
-        
+      <button type="submit" class="btn btn-success w-100">Check-in</button>
+  
     </form>
 
-    <div id="message" style="margin-top:15px; font-family: monospace;"></div>
+    <div id="message"></div>
 
-    <script>
-        // Wait for the HTML document to be fully loaded before running script
-        document.addEventListener('DOMContentLoaded', () => {
-            
-            // Set variables to html document elemenets
-            const patronSelect = document.getElementById('patron_id');
-            const itemSelect = document.getElementById('item_id');
-            const branchSelect = document.getElementById('branch_id');
-            const checkinForm = document.getElementById('checkin-form');
-            const messageDiv = document.getElementById('message');
+    <footer>
+      © 2025 BookMarked | All rights reserved
+    </footer>
 
-            /**
-             * Helper function to populate a <select> dropdown
-             * @param {HTMLSelectElement} dropdown - The select element to populate
-             * @param {Array<Object>} items - An array of objects
-             * @param {string} valueKey - The key in the object to use for the option's value
-             * @param {string} textKey - The key in the object to use for the option's text
-             * @param {string} placeholder - The text for the default disabled option
-             */
-            function populateDropdown(dropdown, items, valueKey, textKey, placeholder) {
-                dropdown.innerHTML = `<option value="">${placeholder}</option>`; // Clear existing options
-                items.forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item[valueKey];
-                    option.textContent = item[textKey];
-                    dropdown.appendChild(option);
-                });
-            }
+  </div>
 
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const patronSelect = document.getElementById('patron_id');
+        const itemSelect = document.getElementById('item_id');
+        const branchSelect = document.getElementById('branch_id');
+        const checkinForm = document.getElementById('checkin-form');
+        const messageDiv = document.getElementById('message');
 
-            // Fetch and populate patrons with active checkouts
-            function fetchPatrons() {
-                return fetch('/api/patrons-with-checkouts')
-                    .then(response => response.json())
-                    .then(patrons => {
-                        populateDropdown(patronSelect, patrons, 'PatronID', 'PatronName', '-- Select Patron --');
-                    })
-                    .catch(err => console.error('Failed to load patrons:', err));
-            }
-
-            // Fetch and populate library branches
-            function fetchBranches() {
-                fetch('/api/branches')
-                    .then(response => response.json())
-                    .then(branches => {
-                        populateDropdown(branchSelect, branches, 'BranchID', 'BranchName', '-- Select Branch --');
-                    })
-                    .catch(err => console.error('Failed to load branches:', err));
-            }
-
-            // Call functions to load initial data
-            fetchPatrons();
-            fetchBranches();
-
-
-            // Add Event Listener for Patron Change ---
-            patronSelect.addEventListener('change', () => {
-                const selectedPatronId = patronSelect.value;
-                messageDiv.textContent = ''; // Clear old messages
-
-                if (!selectedPatronId) {
-                    // Reset item dropdown if no patron is selected
-                    itemSelect.innerHTML = '<option value="">-- Select Patron First --</option>';
-                    itemSelect.disabled = true;
-                    return;
-                }
-
-                // Patron is selected, so fetch their items
-                itemSelect.disabled = true;
-                itemSelect.innerHTML = '<option value="">Loading items...</option>';
-
-                fetch(`/api/items-for-patron?patron_id=${selectedPatronId}`)
-                    .then(response => response.json())
-                    .then(items => {
-                        if (items.length === 0) {
-                            // This patron has no items to return (this might happen after a refresh)
-                            populateDropdown(itemSelect, [], '', '', '-- No items to return --');
-                        } else {
-                            // Populate item list and enable the dropdown
-                            populateDropdown(itemSelect, items, 'ItemID', 'ItemTitle', '-- Select Item to Return --');
-                            itemSelect.disabled = false;
-                        }
-                    })
-                    .catch(err => {
-                        console.error('Failed to load items:', err);
-                        itemSelect.innerHTML = '<option value="">Error loading items</option>';
-                    });
+        function populateDropdown(dropdown, items, valueKey, textKey, placeholder) {
+            dropdown.innerHTML = `<option value="">${placeholder}</option>`;
+            items.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item[valueKey];
+                option.textContent = item[textKey];
+                dropdown.appendChild(option);
             });
+        }
 
-            //Add Event Listener for Form Submission
-            checkinForm.addEventListener('submit', (event) => {
-                event.preventDefault(); // Stop the browser from submitting the form traditionally
-                messageDiv.textContent = 'Processing...';
-
-                const formData = new FormData(checkinForm);
-                const payload = {
-                    item_id: formData.get('item_id'),
-                    branch_id: formData.get('branch_id')
-                };
-
-                // Send the data to the /checkin POST endpoint
-                fetch('/checkin', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(payload)
-                })
+        function fetchPatrons() {
+            return fetch('/api/patrons-with-checkouts')
                 .then(response => response.json())
-                .then(data => {
-                    if (data.ok) {
-                        messageDiv.style.color = 'green';
-                        messageDiv.textContent = data.message;
-                        
-                        // Reset the branch dropdown immediately
-                        branchSelect.value = "";
+                .then(patrons => {
+                    populateDropdown(patronSelect, patrons, 'PatronID', 'PatronName', '-- Select Patron --');
+                })
+                .catch(err => console.error('Failed to load patrons:', err));
+        }
 
-                        // Fetch the patrons
-                        fetchPatrons().then(() => {
-                            
-                            // Reset the patron dropdown to its default value
-                            patronSelect.value = ""; 
-                            
-                            // trigger the patronSelect.addEventListener('change', ...) which will see the value is "" and reset the item list.
-                            patronSelect.dispatchEvent(new Event('change'));
-                        });
+        function fetchBranches() {
+            fetch('/api/branches')
+                .then(response => response.json())
+                .then(branches => {
+                    populateDropdown(branchSelect, branches, 'BranchID', 'BranchName', '-- Select Branch --');
+                })
+                .catch(err => console.error('Failed to load branches:', err));
+        }
 
+        fetchPatrons();
+        fetchBranches();
+
+        patronSelect.addEventListener('change', () => {
+            const selectedPatronId = patronSelect.value;
+            messageDiv.textContent = '';
+
+            if (!selectedPatronId) {
+                itemSelect.innerHTML = '<option value="">-- Select Patron First --</option>';
+                itemSelect.disabled = true;
+                return;
+            }
+
+            itemSelect.disabled = true;
+            itemSelect.innerHTML = '<option value="">Loading items...</option>';
+
+            fetch(`/api/items-for-patron?patron_id=${selectedPatronId}`)
+                .then(response => response.json())
+                .then(items => {
+                    if (items.length === 0) {
+                        populateDropdown(itemSelect, [], '', '', '-- No items to return --');
                     } else {
-                        messageDiv.style.color = 'red'; // show error message is there is one
-                        messageDiv.textContent = `Error: ${data.error}`;
+                        populateDropdown(itemSelect, items, 'ItemID', 'ItemTitle', '-- Select Item to Return --');
+                        itemSelect.disabled = false;
                     }
                 })
                 .catch(err => {
-                    messageDiv.style.color = 'red';
-                    messageDiv.textContent = 'An unexpected network error occurred.';
-                    console.error('Checkin submit error:', err);
+                    console.error('Failed to load items:', err);
+                    itemSelect.innerHTML = '<option value="">Error loading items</option>';
                 });
-            });
-
         });
-    </script>
+
+        checkinForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            messageDiv.textContent = 'Processing...';
+            messageDiv.style.color = '#333';
+
+            const formData = new FormData(checkinForm);
+            const payload = {
+                item_id: formData.get('item_id'),
+                branch_id: formData.get('branch_id')
+            };
+
+            fetch('/checkin', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.ok) {
+                    messageDiv.style.color = 'green';
+                    messageDiv.textContent = data.message;
+                    branchSelect.value = "";
+
+                    fetchPatrons().then(() => {
+                        patronSelect.value = "";
+                        patronSelect.dispatchEvent(new Event('change'));
+                    });
+
+                } else {
+                    messageDiv.style.color = 'red';
+                    messageDiv.textContent = `Error: ${data.error}`;
+                }
+            })
+            .catch(err => {
+                messageDiv.style.color = 'red';
+                messageDiv.textContent = 'Network error.';
+                console.error(err);
+            });
+        });
+    });
+  </script>
+
 </body>
 </html>
