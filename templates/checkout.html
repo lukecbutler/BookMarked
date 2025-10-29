@@ -10,6 +10,23 @@
     <label>Patron ID</label><br>
     <input name="patron_id" id="patron_id" type="number" required>
     <br><br>
+    <!-- Membership panel -->
+<div style="margin:16px 0; padding:16px; border:1px solid #ddd; border-radius:8px;">
+  <h3 style="margin-top:0;">Membership Status</h3>
+
+  <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+    <button type="button" id="btn-check-membership">Check Membership</button>
+    <span id="membership-status" style="font-family:monospace;"></span>
+  </div>
+
+  <div id="extend-controls" style="display:none; margin-top:12px;">
+    <label for="extend-days">Extend by (days):</label>
+    <input id="extend-days" type="number" min="1" value="365" style="width:110px;" />
+    <button type="button" id="btn-extend-membership">Extend</button>
+    <span id="extend-result" style="margin-left:8px; font-family:monospace;"></span>
+  </div>
+</div>
+
 
     <label>Item Type</label><br>
     <select id="item_type">
@@ -68,5 +85,55 @@
       });
     });
   </script>
+  <script>
+  document.getElementById('btn-check-membership')?.addEventListener('click', async () => {
+    const patronId = document.getElementById('patron_id').value;
+    if (!patronId) {
+      alert('Enter Patron ID first');
+      return;
+    }
+
+    const resp = await fetch(`/api/check_membership?patron_id=${patronId}`);
+    const data = await resp.json();
+    const statusEl = document.getElementById('membership-status');
+    const extendDiv = document.getElementById('extend-controls');
+
+    if (!data.ok) {
+      statusEl.textContent = data.error || 'Error checking membership';
+      extendDiv.style.display = 'none';
+      return;
+    }
+
+    if (data.expired) {
+      statusEl.textContent = `Expired on ${data.expiration_date}`;
+      extendDiv.style.display = 'block';
+    } else {
+      statusEl.textContent = `Active until ${data.expiration_date}`;
+      extendDiv.style.display = 'none';
+    }
+  });
+
+  document.getElementById('btn-extend-membership')?.addEventListener('click', async () => {
+    const patronId = document.getElementById('patron_id').value;
+    const days = document.getElementById('extend-days').value || 365;
+
+    const resp = await fetch('/api/extend_membership', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ patron_id: patronId, days: parseInt(days) })
+    });
+    const data = await resp.json();
+    const resultEl = document.getElementById('extend-result');
+
+    if (data.ok) {
+      resultEl.textContent = data.message + ' New Expiration: ' + data.new_expiration;
+      document.getElementById('membership-status').textContent = `Active until ${data.new_expiration}`;
+      document.getElementById('extend-controls').style.display = 'none';
+    } else {
+      resultEl.textContent = data.error || 'Error extending membership';
+    }
+  });
+</script>
+
 </body>
 </html>
