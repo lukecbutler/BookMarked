@@ -132,7 +132,7 @@
         <input name="patron_id" id="patron_id" type="number" class="form-control" required>
       </div>
 
-      <!-- Membership panel (same IDs; purely styled with Bootstrap) -->
+      <!-- Membership panel -->
       <div class="mb-3 p-3 border rounded-3 bg-white">
         <h5 class="mb-3" style="color:#1b5e20; font-weight:700;">Membership Status</h5>
 
@@ -186,7 +186,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- (UNCHANGED) Existing functions and handlers -->
+  <!--  Existing functions and handlers -->
   <script>
     async function loadTypes() {
       const resp = await fetch('/api/itemtypes');
@@ -228,7 +228,7 @@
     });
   </script>
 
-  <!-- (UNCHANGED) Membership handlers -->
+  <!--Membership handlers -->
   <script>
     document.getElementById('btn-check-membership')?.addEventListener('click', async () => {
       const patronId = document.getElementById('patron_id').value;
