@@ -272,15 +272,32 @@ def check_membership():
 
 @app.route('/api/extend_membership', methods=['POST'])
 def extend_membership():
-    """Extend a patron's membership by a number of days."""
+    """Extend or set a patron's membership expiration."""
     payload = request.get_json(silent=True) or request.form
     patron_id = int(payload.get("patron_id", -1))
-    days = int(payload.get("days", 365))  # default 1 year
 
     patron = Patron.query.get(patron_id)
     if not patron:
         return jsonify({"ok": False, "error": "Patron not found"}), 404
 
+    # Option 1: client sent a specific date
+    exp_date_str = payload.get("expiration_date")
+    if exp_date_str:
+      try:
+          # expected format: YYYY-MM-DD from <input type="date">
+          year, month, day = map(int, exp_date_str.split('-'))
+          patron.AccountExpDate = date(year, month, day)
+          database.session.commit()
+          return jsonify({
+              "ok": True,
+              "message": "Membership expiration updated.",
+              "new_expiration": str(patron.AccountExpDate)
+          })
+      except Exception:
+          return jsonify({"ok": False, "error": "Invalid expiration date format (expected YYYY-MM-DD)"}), 400
+
+    # Option 2: fallback: extend by days (old behavior)
+    days = int(payload.get("days", 365))
     current = patron.AccountExpDate
     base_date = date.today() if (current is None or current < date.today()) else current
     patron.AccountExpDate = base_date + timedelta(days=days)
@@ -293,7 +310,40 @@ def extend_membership():
         "new_expiration": str(patron.AccountExpDate)
     })
 
+# --- Fines API ---
 
+@app.route('/api/check_fines', methods=['GET'])
+def check_fines():
+    patron_id = request.args.get('patron_id', type=int)
+    patron = Patron.query.get(patron_id)
+    if not patron:
+        return jsonify({"ok": False, "error": "Patron not found"}), 404
+    fines = float(patron.FeesOwed or 0)
+    return jsonify({"ok": True, "patron_id": patron.PatronID, "fines_due": fines})
+
+@app.route('/api/pay_fines', methods=['POST'])
+def pay_fines():
+    payload = request.get_json(silent=True) or request.form
+    try:
+        patron_id = int(payload.get("patron_id", -1))
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "error": "Invalid patron_id"}), 400
+
+    patron = Patron.query.get(patron_id)
+    if not patron:
+        return jsonify({"ok": False, "error": "Patron not found"}), 404
+
+    previous = float(patron.FeesOwed or 0)
+    patron.FeesOwed = 0
+    database.session.commit()
+
+    return jsonify({
+        "ok": True,
+        "message": "Fines paid successfully.",
+        "previous_fines": previous,
+        "new_fines": float(patron.FeesOwed or 0),
+        "patron_id": patron.PatronID
+    })
 
 
 # Checkin demo
