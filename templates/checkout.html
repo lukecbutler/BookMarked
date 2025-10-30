@@ -197,6 +197,14 @@
 
       <button type="submit" id="btn-checkout" class="btn btn-success w-100" disabled>Checkout</button>
     </form>
+    <div id="checkout-limit-alert" class="alert alert-warning mt-3" style="display:none;">
+  <div id="checkout-limit-text">
+    Patron has exceeded number of checkouts, please check in a book to checkout another one.
+  </div>
+  <button type="button" id="btn-close-transaction" class="btn btn-outline-secondary btn-sm mt-2">
+    Close transaction
+  </button>
+</div>
 
     <div id="picked" class="picked-box"></div>
 
@@ -275,10 +283,11 @@
       const today = new Date().toISOString().split('T')[0];
       document.getElementById('extend-date').value = today;
     } else {
-      statusEl.textContent = `Active until ${data.expiration_date}`;
-      extendDiv.style.display = 'block';  // show so they can change date manually
-      document.getElementById('extend-date').value = data.expiration_date;
+    statusEl.textContent = `Active until ${data.expiration_date}`;
+    extendDiv.style.display = 'none';  // hide controls if membership is active
+    document.getElementById('extend-result').textContent = '';
     }
+
   });
 
   document.getElementById('btn-extend-membership')?.addEventListener('click', async () => {
@@ -317,7 +326,6 @@
     if (extendBox) extendBox.style.display = 'none';
     if (extendResult) extendResult.textContent = '';
 
-    // redirect to home page
     window.location.href = "/";
   });
 </script>
@@ -381,13 +389,13 @@ document.getElementById('btn-check-fines')?.addEventListener('click', async () =
     const due = Number(data.fines_due || 0);
     if (due > 0) {
       status.textContent = `Fines due: $${due.toFixed(2)}.`;
-      actions.style.display = 'flex';      // show Pay / Cancel
-      lockItemControls(true);              // keep locked until paid
+      actions.style.display = 'flex';      
+      lockItemControls(true);              
     } else {
       status.textContent = 'No fines outstanding.';
       actions.style.display = 'none';
       finesCleared = true;
-      lockItemControls(false);             // unlock item type/item/checkout
+      lockItemControls(false);             
     }
   } catch (e) {
     status.textContent = 'Network error while checking fines.';
@@ -414,7 +422,7 @@ document.getElementById('btn-pay-fines')?.addEventListener('click', async () => 
       status.textContent = 'No fines outstanding.';
       actions.style.display = 'none';
       finesCleared = true;
-      lockItemControls(false);             // UNLOCK HERE
+      lockItemControls(false);             
     } else {
       result.textContent = data.error || 'Payment failed.';
       finesCleared = false;
@@ -435,7 +443,6 @@ document.getElementById('btn-cancel-fines')?.addEventListener('click', () => {
   alert('Transaction cancelled due to unpaid fines.');
 });
 
-// --- Guard submit: require fines cleared first ---
 document.getElementById('checkout-form')?.addEventListener('submit', (e) => {
   if (!finesCleared) {
     e.preventDefault();
@@ -446,7 +453,6 @@ document.getElementById('checkout-form')?.addEventListener('submit', (e) => {
 <script>
   // Cancel Fine / Abort transaction
   document.getElementById('btn-cancel-fines')?.addEventListener('click', () => {
-    // clear fine-related text if any
     const fineActions = document.getElementById('fine-actions');
     const fineStatus = document.getElementById('fine-status');
     const fineResult = document.getElementById('fine-result');
@@ -455,10 +461,50 @@ document.getElementById('checkout-form')?.addEventListener('submit', (e) => {
     if (fineStatus) fineStatus.textContent = '';
     if (fineResult) fineResult.textContent = '';
 
-    // redirect to main menu (index)
     window.location.href = "/";
   });
 </script>
+<script>
+document.getElementById('checkout-form')?.addEventListener('submit', async (e) => {
+
+  e.preventDefault();
+
+  const form = e.target;
+  const fd = new FormData(form);
+  const payload = Object.fromEntries(fd.entries());
+
+  const resp = await fetch('/checkout', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await resp.json();
+
+  if (!data.ok && data.error && data.error.includes('Individual checkout limit reached')) {
+    const alertBox = document.getElementById('checkout-limit-alert');
+    const alertText = document.getElementById('checkout-limit-text');
+    alertText.textContent = "Patron has exceeded number of checkouts, please check in a book to checkout another one.";
+    alertBox.style.display = 'block';
+    return;
+  }
+
+  if (data.ok) {
+    alert('Checkout successful!');
+    form.reset();
+    document.getElementById('picked').textContent = '';
+    const alertBox = document.getElementById('checkout-limit-alert');
+    if (alertBox) alertBox.style.display = 'none';
+  } else {
+    alert(data.error || data.message || 'Checkout failed.');
+  }
+});
+
+document.getElementById('btn-close-transaction')?.addEventListener('click', () => {
+  window.location.href = "/";
+});
+</script>
+
 
 
 </body>
