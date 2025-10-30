@@ -309,40 +309,6 @@ def extend_membership():
         "message": f"Membership extended by {days} days.",
         "new_expiration": str(patron.AccountExpDate)
     })
-# --- Fines API ---
-
-@app.route('/api/check_fines', methods=['GET'])
-def check_fines():
-    patron_id = request.args.get('patron_id', type=int)
-    patron = Patron.query.get(patron_id)
-    if not patron:
-        return jsonify({"ok": False, "error": "Patron not found"}), 404
-    fines = float(patron.FeesOwed or 0)
-    return jsonify({"ok": True, "patron_id": patron.PatronID, "fines_due": fines})
-
-@app.route('/api/pay_fines', methods=['POST'])
-def pay_fines():
-    payload = request.get_json(silent=True) or request.form
-    try:
-        patron_id = int(payload.get("patron_id", -1))
-    except (TypeError, ValueError):
-        return jsonify({"ok": False, "error": "Invalid patron_id"}), 400
-
-    patron = Patron.query.get(patron_id)
-    if not patron:
-        return jsonify({"ok": False, "error": "Patron not found"}), 404
-
-    previous = float(patron.FeesOwed or 0)
-    patron.FeesOwed = 0
-    database.session.commit()
-
-    return jsonify({
-        "ok": True,
-        "message": "Fines paid successfully.",
-        "previous_fines": previous,
-        "new_fines": float(patron.FeesOwed or 0),
-        "patron_id": patron.PatronID
-    })
 
 # --- Fines API ---
 
