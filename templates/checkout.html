@@ -140,41 +140,62 @@
           <button type="button" id="btn-check-membership" class="btn btn-outline-success btn-sm">Check Membership</button>
           <span id="membership-status" style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;"></span>
         </div>
-
         <div id="extend-controls" class="mt-3" style="display:none;">
-          <div class="row g-2 align-items-center">
-            <div class="col-auto">
-              <label for="extend-days" class="col-form-label">Extend by (days):</label>
-            </div>
-            <div class="col-auto">
-              <input id="extend-days" type="number" min="1" value="365" class="form-control" style="width:120px;" />
-            </div>
-            <div class="col-auto">
-              <button type="button" id="btn-extend-membership" class="btn btn-success btn-sm">Extend</button>
-            </div>
-            <div class="col-12 mt-1">
-              <span id="extend-result" style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;"></span>
-            </div>
-          </div>
-        </div>
+  <div class="row g-2 align-items-center">
+    <div class="col-auto">
+      <label for="extend-date" class="col-form-label">New expiration date:</label>
+    </div>
+    <div class="col-auto">
+      <input id="extend-date" type="date" class="form-control" />
+    </div>
+    <div class="col-auto">
+      <button type="button" id="btn-extend-membership" class="btn btn-success btn-sm">Save</button>
+    </div>
+    <div class="col-auto">
+      <button type="button" id="btn-cancel-extend" class="btn btn-outline-secondary btn-sm">Abort</button>
+    </div>
+    <div class="col-12 mt-1">
+      <span id="extend-result" style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;"></span>
+    </div>
+  </div>
+</div>
+
+        
       </div>
-      <!-- /Membership panel -->
+      <!-- Fine Balance panel (inside the card, below Membership) -->
+<div class="mb-3 p-3 border rounded-3 bg-white">
+  <h5 class="mb-3" style="color:#1b5e20; font-weight:700;">Fine Balance</h5>
+
+  <div class="d-flex flex-wrap align-items-center gap-2">
+    <button type="button" id="btn-check-fines" class="btn btn-outline-success btn-sm">Check Fines</button>
+    <span id="fine-status" class="ms-2" style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;"></span>
+  </div>
+
+  <div id="fine-actions" class="mt-3" style="display:none;">
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <button type="button" id="btn-pay-fines" class="btn btn-success btn-sm">Pay Fines</button>
+      <button type="button" id="btn-cancel-fines" class="btn btn-outline-secondary btn-sm">Cancel Transaction</button>
+      <span id="fine-result" class="ms-2" style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;"></span>
+    </div>
+  </div>
+</div>
+
 
       <div class="mb-3">
         <label for="item_type" class="form-label">Item Type</label>
-        <select id="item_type" class="form-select">
+        <select id="item_type" class="form-select" disabled>
           <option value="">-- select type --</option>
         </select>
       </div>
 
       <div class="mb-4">
         <label for="item_id" class="form-label">Item</label>
-        <select name="item_id" id="item_id" class="form-select" required>
+        <select name="item_id" id="item_id" class="form-select" required disabled>
           <option value="">-- select item --</option>
         </select>
       </div>
 
-      <button type="submit" class="btn btn-success w-100">Checkout</button>
+      <button type="submit" id="btn-checkout" class="btn btn-success w-100" disabled>Checkout</button>
     </form>
 
     <div id="picked" class="picked-box"></div>
@@ -230,53 +251,215 @@
 
   <!--Membership handlers -->
   <script>
-    document.getElementById('btn-check-membership')?.addEventListener('click', async () => {
-      const patronId = document.getElementById('patron_id').value;
-      if (!patronId) {
-        alert('Enter Patron ID first');
-        return;
-      }
+  document.getElementById('btn-check-membership')?.addEventListener('click', async () => {
+    const patronId = document.getElementById('patron_id').value;
+    if (!patronId) {
+      alert('Enter Patron ID first');
+      return;
+    }
 
-      const resp = await fetch(`/api/check_membership?patron_id=${patronId}`);
-      const data = await resp.json();
-      const statusEl = document.getElementById('membership-status');
-      const extendDiv = document.getElementById('extend-controls');
+    const resp = await fetch(`/api/check_membership?patron_id=${patronId}`);
+    const data = await resp.json();
+    const statusEl = document.getElementById('membership-status');
+    const extendDiv = document.getElementById('extend-controls');
 
-      if (!data.ok) {
-        statusEl.textContent = data.error || 'Error checking membership';
-        extendDiv.style.display = 'none';
-        return;
-      }
+    if (!data.ok) {
+      statusEl.textContent = data.error || 'Error checking membership';
+      extendDiv.style.display = 'none';
+      return;
+    }
 
-      if (data.expired) {
-        statusEl.textContent = `Expired on ${data.expiration_date}`;
-        extendDiv.style.display = 'block';
-      } else {
-        statusEl.textContent = `Active until ${data.expiration_date}`;
-        extendDiv.style.display = 'none';
-      }
+    if (data.expired) {
+      statusEl.textContent = `Expired on ${data.expiration_date}`;
+      extendDiv.style.display = 'block';
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('extend-date').value = today;
+    } else {
+      statusEl.textContent = `Active until ${data.expiration_date}`;
+      extendDiv.style.display = 'block';  // show so they can change date manually
+      document.getElementById('extend-date').value = data.expiration_date;
+    }
+  });
+
+  document.getElementById('btn-extend-membership')?.addEventListener('click', async () => {
+    const patronId = document.getElementById('patron_id').value;
+    const newDate = document.getElementById('extend-date').value;
+    const resultEl = document.getElementById('extend-result');
+
+    if (!patronId) {
+      alert('Enter Patron ID first');
+      return;
+    }
+    if (!newDate) {
+      alert('Pick a new expiration date');
+      return;
+    }
+
+    const resp = await fetch('/api/extend_membership', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ patron_id: patronId, expiration_date: newDate })
     });
+    const data = await resp.json();
 
-    document.getElementById('btn-extend-membership')?.addEventListener('click', async () => {
-      const patronId = document.getElementById('patron_id').value;
-      const days = document.getElementById('extend-days').value || 365;
+    if (data.ok) {
+      resultEl.textContent = data.message + ' New Expiration: ' + data.new_expiration;
+      document.getElementById('membership-status').textContent = `Active until ${data.new_expiration}`;
+      document.getElementById('extend-controls').style.display = 'none';
+    } else {
+      resultEl.textContent = data.error || 'Error extending membership';
+    }
+  });
 
-      const resp = await fetch('/api/extend_membership', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ patron_id: patronId, days: parseInt(days) })
-      });
-      const data = await resp.json();
-      const resultEl = document.getElementById('extend-result');
+  document.getElementById('btn-cancel-extend')?.addEventListener('click', () => {
+    const extendBox = document.getElementById('extend-controls');
+    const extendResult = document.getElementById('extend-result');
+    if (extendBox) extendBox.style.display = 'none';
+    if (extendResult) extendResult.textContent = '';
 
-      if (data.ok) {
-        resultEl.textContent = data.message + ' New Expiration: ' + data.new_expiration;
-        document.getElementById('membership-status').textContent = `Active until ${data.new_expiration}`;
-        document.getElementById('extend-controls').style.display = 'none';
-      } else {
-        resultEl.textContent = data.error || 'Error extending membership';
-      }
-    });
-  </script>
+    // redirect to home page
+    window.location.href = "/";
+  });
+</script>
+
+  <script>
+let finesCleared = false;
+
+function lockItemControls(locked) {
+  document.getElementById('item_type').disabled = locked;
+  document.getElementById('item_id').disabled = locked;
+  document.getElementById('btn-checkout').disabled = locked;
+}
+
+// Relock & clear fines messages when Patron ID changes
+document.getElementById('patron_id')?.addEventListener('input', () => {
+  finesCleared = false;
+  lockItemControls(true);
+  const s = document.getElementById('fine-status');
+  const r = document.getElementById('fine-result');
+  const a = document.getElementById('fine-actions');
+  if (s) s.textContent = '';
+  if (r) r.textContent = '';
+  if (a) a.style.display = 'none';
+});
+
+// --- API helpers ---
+async function apiCheckFines(patronId){
+  const resp = await fetch(`/api/check_fines?patron_id=${encodeURIComponent(patronId)}`);
+  return resp.json();
+}
+async function apiPayFines(patronId){
+  const resp = await fetch('/api/pay_fines', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ patron_id: Number(patronId) })
+  });
+  return resp.json();
+}
+
+// --- Check Fines button ---
+document.getElementById('btn-check-fines')?.addEventListener('click', async () => {
+  const pid = document.getElementById('patron_id').value;
+  const status = document.getElementById('fine-status');
+  const actions = document.getElementById('fine-actions');
+  const result = document.getElementById('fine-result');
+
+  if (!pid) { alert('Enter Patron ID first'); return; }
+
+  try {
+    status.textContent = 'Checking fines...';
+    result.textContent = '';
+    const data = await apiCheckFines(pid);
+
+    if (!data.ok) {
+      status.textContent = data.error || 'Error checking fines.';
+      actions.style.display = 'none';
+      lockItemControls(true);
+      return;
+    }
+
+    const due = Number(data.fines_due || 0);
+    if (due > 0) {
+      status.textContent = `Fines due: $${due.toFixed(2)}.`;
+      actions.style.display = 'flex';      // show Pay / Cancel
+      lockItemControls(true);              // keep locked until paid
+    } else {
+      status.textContent = 'No fines outstanding.';
+      actions.style.display = 'none';
+      finesCleared = true;
+      lockItemControls(false);             // unlock item type/item/checkout
+    }
+  } catch (e) {
+    status.textContent = 'Network error while checking fines.';
+    actions.style.display = 'none';
+    lockItemControls(true);
+  }
+});
+
+// --- Pay Fines button ---
+document.getElementById('btn-pay-fines')?.addEventListener('click', async () => {
+  const pid = document.getElementById('patron_id').value;
+  const result = document.getElementById('fine-result');
+  const status = document.getElementById('fine-status');
+  const actions = document.getElementById('fine-actions');
+
+  if (!pid) { alert('Enter Patron ID first'); return; }
+
+  try {
+    result.textContent = 'Paying...';
+    const data = await apiPayFines(pid);
+
+    if (data.ok) {
+      result.textContent = `Paid $${(data.previous_fines || 0).toFixed(2)}.`;
+      status.textContent = 'No fines outstanding.';
+      actions.style.display = 'none';
+      finesCleared = true;
+      lockItemControls(false);             // UNLOCK HERE
+    } else {
+      result.textContent = data.error || 'Payment failed.';
+      finesCleared = false;
+      lockItemControls(true);
+    }
+  } catch (e) {
+    result.textContent = 'Network error while paying.';
+    finesCleared = false;
+    lockItemControls(true);
+  }
+});
+
+// --- Cancel Transaction button ---
+document.getElementById('btn-cancel-fines')?.addEventListener('click', () => {
+  finesCleared = false;
+  lockItemControls(true);
+  document.getElementById('fine-result').textContent = 'Cancelled.';
+  alert('Transaction cancelled due to unpaid fines.');
+});
+
+// --- Guard submit: require fines cleared first ---
+document.getElementById('checkout-form')?.addEventListener('submit', (e) => {
+  if (!finesCleared) {
+    e.preventDefault();
+    alert('Please clear fines (or confirm there are none) before proceeding.');
+  }
+});
+</script>
+<script>
+  // Cancel Fine / Abort transaction
+  document.getElementById('btn-cancel-fines')?.addEventListener('click', () => {
+    // clear fine-related text if any
+    const fineActions = document.getElementById('fine-actions');
+    const fineStatus = document.getElementById('fine-status');
+    const fineResult = document.getElementById('fine-result');
+
+    if (fineActions) fineActions.style.display = 'none';
+    if (fineStatus) fineStatus.textContent = '';
+    if (fineResult) fineResult.textContent = '';
+
+    // redirect to main menu (index)
+    window.location.href = "/";
+  });
+</script>
+
+
 </body>
 </html>
