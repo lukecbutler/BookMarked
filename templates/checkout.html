@@ -2,72 +2,388 @@
 <html>
 <head>
   <title>Checkout Demo</title>
+  <style>
+    .patron-info {
+      margin: 20px 0;
+      padding: 15px;
+      border: 1px solid #ccc;
+      background: #f9f9f9;
+      display: none;
+    }
+    .patron-info.show {
+      display: block;
+    }
+    .patron-warning {
+      color: #d9534f;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+    .patron-ok {
+      color: #5cb85c;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+    .basket {
+      margin: 20px 0;
+      padding: 10px;
+      border: 1px solid #ccc;
+      background: #f9f9f9;
+    }
+    .basket-item {
+      padding: 8px;
+      margin: 5px 0;
+      background: white;
+      border: 1px solid #ddd;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .remove-btn {
+      background: #dc3545;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+    .remove-btn:hover {
+      background: #c82333;
+    }
+    #item-info {
+      margin: 10px 0;
+      padding: 10px;
+      background: #f0f0f0;
+      display: none;
+    }
+    .error {
+      color: red;
+      margin: 10px 0;
+    }
+    .success {
+      color: green;
+      margin: 10px 0;
+    }
+    .disabled-section {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+  </style>
 </head>
 <body>
-  <h2>Checkout (single item)</h2>
+  <h2>Checkout (multiple items)</h2>
 
-  <form method="post" action="/checkout" id="checkout-form">
+  <!-- Patron Lookup Section -->
+  <div>
     <label>Patron ID</label><br>
-    <input name="patron_id" id="patron_id" type="number" required>
+    <input id="patron_id" type="number" required>
+    <button type="button" id="check-patron-btn">Check Patron</button>
+    <br><br>
+  </div>
+
+  <!-- Patron Info Display -->
+  <div id="patron-info" class="patron-info">
+    <h3>Patron Information</h3>
+    <div id="patron-details"></div>
+    <div id="patron-status"></div>
+  </div>
+
+  <!-- Item Selection Section (disabled until patron is validated) -->
+  <div id="item-section" class="disabled-section">
+    <hr>
+    <h3>Add Items to Basket</h3>
+    <label>Item ID</label><br>
+    <input id="item_id" type="number">
+    <button type="button" id="add-btn">Add to Basket</button>
     <br><br>
 
-    <label>Item Type</label><br>
-    <select id="item_type">
-      <option value="">-- select type --</option>
-    </select>
-    <br><br>
+    <div id="item-info">
+      <strong>Item Info:</strong><br>
+      <span id="item-details"></span>
+    </div>
+  </div>
 
-    <label>Item</label><br>
-    <select name="item_id" id="item_id" required>
-      <option value="">-- select item --</option>
-    </select>
-    <br><br>
+  <!-- Basket Section -->
+  <div class="basket">
+    <h3>Basket (<span id="basket-count">0</span> items)</h3>
+    <div id="basket-items"></div>
+    <button type="button" id="confirm-btn" style="margin-top: 10px;" disabled>Confirm Checkout</button>
+  </div>
 
-    <button type="submit">Checkout</button>
-  </form>
-
-  <div id="picked" style="margin-top:10px; font-family: monospace;"></div>
+  <div id="message"></div>
 
   <script>
-    // Minimal JS just for dropdown population (testing only)
-    async function loadTypes() {
-      const resp = await fetch('/api/itemtypes');
-      const types = await resp.json();
-      const sel = document.getElementById('item_type');
-      sel.innerHTML = '<option value="">-- select type --</option>';
-      types.forEach(t => {
-        const opt = document.createElement('option');
-        opt.value = t.TypeID;
-        opt.textContent = t.TypeName;
-        sel.appendChild(opt);
-      });
-    }
+    let basket = [];
+    let currentPatron = null;
+    let itemLookupTimeout;
 
-    async function loadItems(typeId) {
-      const url = '/api/items' + (typeId ? ('?type_id=' + encodeURIComponent(typeId)) : '');
-      const resp = await fetch(url);
-      const items = await resp.json();
-      const sel = document.getElementById('item_id');
-      sel.innerHTML = '<option value="">-- select item --</option>';
-      items.forEach(i => {
-        const opt = document.createElement('option');
-        opt.value = i.ItemID;
-        opt.textContent = i.ItemTitle + ' (ID ' + i.ItemID + ')';
-        sel.appendChild(opt);
-      });
-    }
+    // Check patron info when button is clicked
+    document.getElementById('check-patron-btn').addEventListener('click', async () => {
+      const patronId = document.getElementById('patron_id').value.trim();
+      
+      if (!patronId) {
+        showMessage('Please enter a Patron ID', 'error');
+        return;
+      }
 
-    document.addEventListener('DOMContentLoaded', () => {
-      loadTypes();
-      document.getElementById('item_type').addEventListener('change', (e) => {
-        loadItems(e.target.value);
-        document.getElementById('picked').textContent = '';
-      });
-      document.getElementById('item_id').addEventListener('change', (e) => {
-        const itemText = e.target.options[e.target.selectedIndex]?.text || '';
-        document.getElementById('picked').textContent = itemText ? ('Selected: ' + itemText) : '';
-      });
+      try {
+        // Fetch patron info from multiple endpoints
+          const [patronResp, membershipResp, finesResp] = await Promise.all([
+          fetch(`/api/patron/${patronId}`),
+          fetch(`/api/check_membership?patron_id=${patronId}`),
+          fetch(`/api/check_fines?patron_id=${patronId}`)
+        ]);
+
+        const patronData = await patronResp.json();
+        const membershipData = await membershipResp.json();
+        const finesData = await finesResp.json();
+
+          if (!patronData.ok || !membershipData.ok || !finesData.ok) {
+          showMessage('Patron not found', 'error');
+          document.getElementById('patron-info').classList.remove('show');
+          document.getElementById('item-section').classList.add('disabled-section');
+          return;
+        }
+
+        // Store patron info
+        currentPatron = {
+          patron_id: patronId,
+          full_name: patronData.FullName,
+          first_name: patronData.FirstName,
+          last_name: patronData.LastName,
+          expired: membershipData.expired,
+          expiration_date: membershipData.expiration_date,
+          fines_due: finesData.fines_due,
+          items_checked_out: patronData.ItemsCheckedOut
+        };
+
+        // Display patron info
+        displayPatronInfo(currentPatron);
+
+        // Check if patron can checkout
+        if (currentPatron.expired) {
+          showMessage('Patron membership is EXPIRED. Please renew membership before checkout.', 'error');
+          document.getElementById('item-section').classList.add('disabled-section');
+          return;
+        }
+
+        if (currentPatron.fines_due > 0) {
+          showMessage(`Patron has outstanding fines of $${currentPatron.fines_due.toFixed(2)}. Please clear fines before checkout.`, 'error');
+          document.getElementById('item-section').classList.add('disabled-section');
+          return;
+        }
+
+        // Patron is good to go
+        showMessage('Patron is eligible for checkout!', 'success');
+        document.getElementById('item-section').classList.remove('disabled-section');
+
+      } catch (err) {
+        showMessage('Error checking patron information', 'error');
+        console.error(err);
+      }
     });
+
+    // Display patron information
+    function displayPatronInfo(patron) {
+      const detailsDiv = document.getElementById('patron-details');
+      const statusDiv = document.getElementById('patron-status');
+
+      detailsDiv.innerHTML = `
+        <strong>Patron Name:</strong> ${patron.full_name}<br>
+        <strong>Patron ID:</strong> ${patron.patron_id}<br>
+        <strong>Items Checked Out:</strong> ${patron.items_checked_out}<br>
+        <strong>Membership Expiration:</strong> ${patron.expiration_date}<br>
+        <strong>Fines Owed:</strong> $${patron.fines_due.toFixed(2)}
+      `;
+
+      let statusHTML = '';
+      if (patron.expired) {
+        statusHTML += '<div class="patron-warning">⚠️ MEMBERSHIP EXPIRED</div>';
+      } else {
+        statusHTML += '<div class="patron-ok">✓ Membership Active</div>';
+      }
+
+      if (patron.fines_due > 0) {
+        statusHTML += '<div class="patron-warning">⚠️ HAS OUTSTANDING FINES</div>';
+      } else {
+        statusHTML += '<div class="patron-ok">✓ No Outstanding Fines</div>';
+      }
+
+      statusDiv.innerHTML = statusHTML;
+      document.getElementById('patron-info').classList.add('show');
+    }
+
+    // Auto-lookup item info as you type
+    document.getElementById('item_id').addEventListener('input', (e) => {
+      clearTimeout(itemLookupTimeout);
+      const itemId = e.target.value.trim();
+      
+      if (!itemId) {
+        document.getElementById('item-info').style.display = 'none';
+        return;
+      }
+
+      itemLookupTimeout = setTimeout(async () => {
+        try {
+          const resp = await fetch(`/api/item/${itemId}`);
+          const data = await resp.json();
+          
+          const infoDiv = document.getElementById('item-info');
+          const detailsSpan = document.getElementById('item-details');
+          
+          if (data.ok) {
+            detailsSpan.innerHTML = `
+              <strong>${data.ItemTitle}</strong><br>
+              Type: ${data.ItemType} | Available: ${data.Availability ? 'Yes' : 'No'} | Shelf: ${data.ShelfCode}
+            `;
+            infoDiv.style.display = 'block';
+          } else {
+            detailsSpan.textContent = data.error || 'Item not found';
+            infoDiv.style.display = 'block';
+          }
+        } catch (err) {
+          console.error('Error fetching item:', err);
+        }
+      }, 500);
+    });
+
+    // Add item to basket
+    document.getElementById('add-btn').addEventListener('click', async () => {
+      if (!currentPatron) {
+        showMessage('Please check patron information first', 'error');
+        return;
+      }
+
+      const itemId = document.getElementById('item_id').value.trim();
+      
+      if (!itemId) {
+        showMessage('Please enter an Item ID', 'error');
+        return;
+      }
+
+      // Check if already in basket
+      if (basket.find(item => item.ItemID == itemId)) {
+        showMessage('Item already in basket', 'error');
+        return;
+      }
+
+      // Fetch item details
+      try {
+        const resp = await fetch(`/api/item/${itemId}`);
+        const data = await resp.json();
+        
+        if (!data.ok) {
+          showMessage(data.error || 'Item not found', 'error');
+          return;
+        }
+
+        if (!data.Availability) {
+          showMessage('Item is not available for checkout', 'error');
+          return;
+        }
+
+        // Add to basket
+        basket.push(data);
+        updateBasket();
+        document.getElementById('item_id').value = '';
+        document.getElementById('item-info').style.display = 'none';
+        showMessage('Item added to basket', 'success');
+      } catch (err) {
+        showMessage('Error adding item', 'error');
+        console.error(err);
+      }
+    });
+
+    // Remove item from basket
+    function removeFromBasket(itemId) {
+      basket = basket.filter(item => item.ItemID != itemId);
+      updateBasket();
+      showMessage('Item removed from basket', 'success');
+    }
+
+    // Update basket display
+    function updateBasket() {
+      const basketItems = document.getElementById('basket-items');
+      const basketCount = document.getElementById('basket-count');
+      const confirmBtn = document.getElementById('confirm-btn');
+
+      basketCount.textContent = basket.length;
+
+      if (basket.length === 0) {
+        basketItems.innerHTML = '<em>Basket is empty</em>';
+        confirmBtn.disabled = true;
+      } else {
+        basketItems.innerHTML = basket.map(item => `
+          <div class="basket-item">
+            <span><strong>${item.ItemTitle}</strong> (ID: ${item.ItemID})</span>
+            <button class="remove-btn" onclick="removeFromBasket(${item.ItemID})">Remove</button>
+          </div>
+        `).join('');
+        confirmBtn.disabled = false;
+      }
+    }
+
+    // Confirm checkout
+    document.getElementById('confirm-btn').addEventListener('click', async () => {
+      if (!currentPatron) {
+        showMessage('Please check patron information first', 'error');
+        return;
+      }
+
+      const patronId = document.getElementById('patron_id').value.trim();
+      
+      if (!patronId) {
+        showMessage('Please enter a Patron ID', 'error');
+        return;
+      }
+
+      if (basket.length === 0) {
+        showMessage('Basket is empty', 'error');
+        return;
+      }
+
+      const itemIds = basket.map(item => item.ItemID);
+
+      try {
+        const resp = await fetch('/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            patron_id: parseInt(patronId),
+            item_ids: itemIds
+          })
+        });
+
+        const data = await resp.json();
+
+        if (data.ok) {
+          showMessage(data.message + ' Items checked out successfully!', 'success');
+          basket = [];
+          updateBasket();
+          document.getElementById('patron_id').value = '';
+          document.getElementById('patron-info').classList.remove('show');
+          document.getElementById('item-section').classList.add('disabled-section');
+          currentPatron = null;
+        } else {
+          showMessage(data.error, 'error');
+        }
+      } catch (err) {
+        showMessage('Error during checkout', 'error');
+        console.error(err);
+      }
+    });
+
+    // Show message helper
+    function showMessage(msg, type) {
+      const msgDiv = document.getElementById('message');
+      msgDiv.textContent = msg;
+      msgDiv.className = type;
+      setTimeout(() => {
+        msgDiv.textContent = '';
+        msgDiv.className = '';
+      }, 5000);
+    }
+
+    // Initialize
+    updateBasket();
   </script>
 </body>
 </html>
