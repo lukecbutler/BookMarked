@@ -85,6 +85,12 @@ def membership_expired(patron: Patron) -> bool:
     '''
     return bool(patron and patron.AccountExpDate and patron.AccountExpDate < date.today())
 
+
+#BERKER: calculates the rental period for a library item
+def rental_days_for(item: LibraryItem) -> int:
+    item_type = ItemType.query.get(item.ItemType) if item else None
+    return int(item_type.RentalLength) if (item_type and item_type.RentalLength) else 0
+
 #### --- Routes --- ####
 MAX_ITEMS_PER_PATRON = 20
 
@@ -137,7 +143,8 @@ def api_items_by_type() -> jsonify:
     query = LibraryItem.query
     if type_id_from_url.isdigit(): 
         query = query.filter(LibraryItem.ItemType == int(type_id_from_url))
-
+#BERKER: filtering unavailable items from dropdown, will remove after changing dropdown structure.
+    query = query.filter(LibraryItem.Availability == True)
     items_from_db = query.order_by(LibraryItem.ItemTitle).all()
 
     output_list = []
@@ -458,8 +465,36 @@ def checkout_basic() -> jsonify:
             "message": "RENEW MEMBERSHIP NOW!!",
             "expired_on": str(patron.AccountExpDate)
         })
+    
+#BERKER: Checking if patron has feesc.
+    if patron.FeesOwed and patron.FeesOwed > 0:
+        return jsonify({
+            "ok": False,
+            "error": f"Patron has fine balance of ${float(patron.FeesOwed):.2f}. Please clear fines before checkout."
+    })
 
     # --- UPDATED AVAILABILITY CHECK ---
+
+#BERKER: check if specific item already has active checkout
+    active_checkout = (
+        Checkout.query
+        .outerjoin(Return, Return.TransactionID == Checkout.TransactionID)
+        .filter(
+            Checkout.ItemID == item_id,
+            Return.TransactionID.is_(None)
+        )
+        .first()
+    )
+
+    # If an active checkout exists, item is already checked out
+    if active_checkout:
+        return jsonify({
+            "ok": False, 
+            "error": f"Item '{item.ItemTitle}' is already checked out and cannot be checked out again."
+        })
+
+
+    
     if item.Availability is not True:
         # We can't easily tell if it's 'CheckedOut' or 'CheckedIn'
         # without another query, so a generic message is best.
@@ -468,6 +503,9 @@ def checkout_basic() -> jsonify:
     current_count = patron.ItemsCheckedOut or 0
     if current_count >= MAX_ITEMS_PER_PATRON:
         return jsonify({"ok": False, "error": "Individual checkout limit reached (20 items)"})
+    
+    rental_days = rental_days_for(item)
+    due_date = date.today() + timedelta(days=rental_days)
     
     # create checkout record
     new_checkout = Checkout(
@@ -498,17 +536,22 @@ def checkout_basic() -> jsonify:
         .all()
     )
 
-    checked_out_list = [
-        {
-            "TransactionID": checkout.TransactionID,
-            "PatronID": patron.PatronID,
-            "PatronName": f"{patron.PatronFN} {patron.PatronLN}",
-            "ItemID": item.ItemID,
-            "ItemTitle": item.ItemTitle,
-            "CheckoutDate": str(checkout.CheckoutDate)
-        }
-        for checkout, item, patron in active_checkouts
-    ]
+#BERKER: list already checkedout items and list due dates
+    checked_out_list = []
+    for checkout_record, library_item, patron_record in active_checkouts:
+        rental_days = rental_days_for(library_item)
+        item_due_date = (checkout_record.CheckoutDate or date.today()) + timedelta(days=rental_days)
+
+        checked_out_list.append({
+                "TransactionID": checkout_record.TransactionID,
+                "PatronID": patron_record.PatronID,
+                "PatronName": f"{patron_record.PatronFN} {patron_record.PatronLN}",
+                "ItemID": library_item.ItemID,
+                "ItemTitle": library_item.ItemTitle,
+                "CheckoutDate": str(checkout_record.CheckoutDate),
+                "due_date": str(item_due_date)
+            })
+        
 
     return jsonify({
         "ok": True,
@@ -516,7 +559,8 @@ def checkout_basic() -> jsonify:
         "patron_id": patron_id,
         "item_id": item_id,
         "checkout_date": str(date.today()),
-        "checked_out": item.ItemTitle # checked_out_list # replace with the single item just checked out
+        "due_date": str(due_date),
+        "checked_out": checked_out_list
     })
 
 
