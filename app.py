@@ -388,7 +388,7 @@ def checkin_item() -> jsonify:
     if not active_checkout: # If no active checkout is found, it's either already 'Available' or 'CheckedIn'
         item_check = LibraryItem.query.get(item_id)
         if item_check and item_check.Availability:
-                return jsonify({"ok": False, "error": "This item is already 'Available'"}), 400
+                return jsonify({"ok": False, "error": "This item is still Available."}), 400
         else:
                 return jsonify({"ok": False, "error": "This item is already 'CheckedIn' and awaiting reshelving"}), 400
 
