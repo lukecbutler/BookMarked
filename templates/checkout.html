@@ -1,3 +1,4 @@
+<!-- completely ai generated code for testing backend code -->
 <!doctype html>
 <html>
 <head>
@@ -66,49 +67,122 @@
       opacity: 0.5;
       pointer-events: none;
     }
+    .hidden {
+      display: none;
+    }
+    .receipt {
+      margin: 20px 0;
+      padding: 20px;
+      border: 2px solid #28a745;
+      background: #f8f9fa;
+    }
+    .receipt h2 {
+      color: #28a745;
+      margin-top: 0;
+    }
+    .receipt-section {
+      margin: 15px 0;
+      padding: 10px;
+      background: white;
+      border: 1px solid #ddd;
+    }
+    .receipt-item {
+      padding: 5px 0;
+      border-bottom: 1px solid #eee;
+    }
+    .receipt-item:last-child {
+      border-bottom: none;
+    }
+    .action-buttons {
+      margin-top: 20px;
+    }
+    .action-buttons button {
+      margin-right: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .email-btn {
+      background: #007bff;
+      color: white;
+      border: none;
+    }
+    .print-btn {
+      background: #6c757d;
+      color: white;
+      border: none;
+    }
+    .new-checkout-btn {
+      background: #28a745;
+      color: white;
+      border: none;
+    }
   </style>
 </head>
 <body>
-  <h2>Checkout (multiple items)</h2>
+  <div id="checkout-section">
+    <h2>Checkout (multiple items)</h2>
 
-  <!-- Patron Lookup Section -->
-  <div>
-    <label>Patron ID</label><br>
-    <input id="patron_id" type="number" required>
-    <button type="button" id="check-patron-btn">Check Patron</button>
-    <br><br>
+    <!-- Patron Lookup Section -->
+    <div>
+      <label>Patron ID</label><br>
+      <input id="patron_id" type="number" required>
+      <button type="button" id="check-patron-btn">Check Patron</button>
+      <br><br>
+    </div>
+
+    <!-- Patron Info Display -->
+    <div id="patron-info" class="patron-info">
+      <h3>Patron Information</h3>
+      <div id="patron-details"></div>
+      <div id="patron-status"></div>
+    </div>
+
+    <!-- Item Selection Section (disabled until patron is validated) -->
+    <div id="item-section" class="disabled-section">
+      <hr>
+      <h3>Add Items to Basket</h3>
+      <label>Item ID</label><br>
+      <input id="item_id" type="number">
+      <button type="button" id="add-btn">Add to Basket</button>
+      <br><br>
+
+      <div id="item-info">
+        <strong>Item Info:</strong><br>
+        <span id="item-details"></span>
+      </div>
+    </div>
+
+    <!-- Basket Section -->
+    <div class="basket">
+      <h3>Basket (<span id="basket-count">0</span> items)</h3>
+      <div id="basket-items"></div>
+      <button type="button" id="confirm-btn" style="margin-top: 10px;" disabled>Confirm Checkout</button>
+    </div>
+
+    <div id="message"></div>
   </div>
 
-  <!-- Patron Info Display -->
-  <div id="patron-info" class="patron-info">
-    <h3>Patron Information</h3>
-    <div id="patron-details"></div>
-    <div id="patron-status"></div>
-  </div>
+  <!-- Receipt Section (hidden by default) -->
+  <div id="receipt-section" class="receipt hidden">
+    <h2>✓ Checkout Successful!</h2>
+    
+    <div class="receipt-section">
+      <h3>Patron Information</h3>
+      <div id="receipt-patron-info"></div>
+    </div>
 
-  <!-- Item Selection Section (disabled until patron is validated) -->
-  <div id="item-section" class="disabled-section">
-    <hr>
-    <h3>Add Items to Basket</h3>
-    <label>Item ID</label><br>
-    <input id="item_id" type="number">
-    <button type="button" id="add-btn">Add to Basket</button>
-    <br><br>
+    <div class="receipt-section">
+      <h3>Items Checked Out</h3>
+      <div id="receipt-items"></div>
+    </div>
 
-    <div id="item-info">
-      <strong>Item Info:</strong><br>
-      <span id="item-details"></span>
+    <div class="action-buttons">
+      <button class="email-btn" onclick="alert('Email functionality coming soon!')">📧 Email Receipt</button>
+      <button class="print-btn" onclick="window.print()">🖨️ Print Receipt</button>
+      <button class="new-checkout-btn" onclick="startNewCheckout()">🔄 New Checkout</button>
     </div>
   </div>
-
-  <!-- Basket Section -->
-  <div class="basket">
-    <h3>Basket (<span id="basket-count">0</span> items)</h3>
-    <div id="basket-items"></div>
-    <button type="button" id="confirm-btn" style="margin-top: 10px;" disabled>Confirm Checkout</button>
-  </div>
-
-  <div id="message"></div>
 
   <script>
     let basket = [];
@@ -126,7 +200,7 @@
 
       try {
         // Fetch patron info from multiple endpoints
-          const [patronResp, membershipResp, finesResp] = await Promise.all([
+        const [patronResp, membershipResp, finesResp] = await Promise.all([
           fetch(`/api/patron/${patronId}`),
           fetch(`/api/check_membership?patron_id=${patronId}`),
           fetch(`/api/check_fines?patron_id=${patronId}`)
@@ -136,7 +210,7 @@
         const membershipData = await membershipResp.json();
         const finesData = await finesResp.json();
 
-          if (!patronData.ok || !membershipData.ok || !finesData.ok) {
+        if (!patronData.ok || !membershipData.ok || !finesData.ok) {
           showMessage('Patron not found', 'error');
           document.getElementById('patron-info').classList.remove('show');
           document.getElementById('item-section').classList.add('disabled-section');
@@ -355,13 +429,8 @@
         const data = await resp.json();
 
         if (data.ok) {
-          showMessage(data.message + ' Items checked out successfully!', 'success');
-          basket = [];
-          updateBasket();
-          document.getElementById('patron_id').value = '';
-          document.getElementById('patron-info').classList.remove('show');
-          document.getElementById('item-section').classList.add('disabled-section');
-          currentPatron = null;
+          // Show receipt
+          showReceipt(currentPatron, data.items_checked_out);
         } else {
           showMessage(data.error, 'error');
         }
@@ -370,6 +439,36 @@
         console.error(err);
       }
     });
+
+    // Show receipt after successful checkout
+    function showReceipt(patron, checkedOutItems) {
+      // Hide checkout section
+      document.getElementById('checkout-section').classList.add('hidden');
+      
+      // Populate receipt
+      const patronInfo = document.getElementById('receipt-patron-info');
+      patronInfo.innerHTML = `
+        <strong>Name:</strong> ${patron.full_name}<br>
+        <strong>Patron ID:</strong> ${patron.patron_id}<br>
+        <strong>Date:</strong> ${new Date().toLocaleDateString()}
+      `;
+
+      const itemsList = document.getElementById('receipt-items');
+      itemsList.innerHTML = checkedOutItems.map(item => `
+        <div class="receipt-item">
+          <strong>${item.ItemTitle}</strong> (ID: ${item.ItemID})<br>
+          <small>Checkout Date: ${item.CheckoutDate} | Due Date: ${item.DueDate}</small>
+        </div>
+      `).join('');
+
+      // Show receipt section
+      document.getElementById('receipt-section').classList.remove('hidden');
+    }
+
+    // Start new checkout (refresh page)
+    function startNewCheckout() {
+      location.reload();
+    }
 
     // Show message helper
     function showMessage(msg, type) {
