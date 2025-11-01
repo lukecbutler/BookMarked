@@ -85,6 +85,12 @@ def membership_expired(patron: Patron) -> bool:
     '''
     return bool(patron and patron.AccountExpDate and patron.AccountExpDate < date.today())
 
+
+#BERKER: calculates the rental period for a library item
+def rental_days_for(item: LibraryItem) -> int:
+    item_type = ItemType.query.get(item.ItemType) if item else None
+    return int(item_type.RentalLength) if (item_type and item_type.RentalLength) else 0
+
 #### --- Routes --- ####
 MAX_ITEMS_PER_PATRON = 20
 
@@ -137,7 +143,8 @@ def api_items_by_type() -> jsonify:
     query = LibraryItem.query
     if type_id_from_url.isdigit(): 
         query = query.filter(LibraryItem.ItemType == int(type_id_from_url))
-
+#BERKER: filtering unavailable items from dropdown, will remove after changing dropdown structure.
+    query = query.filter(LibraryItem.Availability == True)
     items_from_db = query.order_by(LibraryItem.ItemTitle).all()
 
     output_list = []
@@ -216,6 +223,24 @@ def api_branches():
     ]
     return jsonify(branch_list)
 
+#BERKER: to get item details by ID (replaced dropdown approach)
+@app.route('/api/item/<int:item_id>')
+def api_get_item(item_id: int) -> jsonify:
+    item = LibraryItem.query.get(item_id) 
+    if not item:
+        return jsonify({"ok": False, "error": "Item not found"}), 404  
+    item_type = ItemType.query.get(item.ItemType)  
+    item_data = {
+        "ok": True,
+        "ItemID": item.ItemID,
+        "ItemTitle": item.ItemTitle,
+        "ItemType": item_type.TypeName if item_type else "Unknown",
+        "Availability": item.Availability,
+        "ShelfCode": item.ShelfCode
+    }
+    
+    return jsonify(item_data)
+
 
 @app.route('/api/items-for-patron')
 def api_items_for_patron() -> jsonify:
@@ -272,15 +297,32 @@ def check_membership():
 
 @app.route('/api/extend_membership', methods=['POST'])
 def extend_membership():
-    """Extend a patron's membership by a number of days."""
+    """Extend or set a patron's membership expiration."""
     payload = request.get_json(silent=True) or request.form
     patron_id = int(payload.get("patron_id", -1))
-    days = int(payload.get("days", 365))  # default 1 year
 
     patron = Patron.query.get(patron_id)
     if not patron:
         return jsonify({"ok": False, "error": "Patron not found"}), 404
 
+    # Option 1: client sent a specific date
+    exp_date_str = payload.get("expiration_date")
+    if exp_date_str:
+      try:
+          # expected format: YYYY-MM-DD from <input type="date">
+          year, month, day = map(int, exp_date_str.split('-'))
+          patron.AccountExpDate = date(year, month, day)
+          database.session.commit()
+          return jsonify({
+              "ok": True,
+              "message": "Membership expiration updated.",
+              "new_expiration": str(patron.AccountExpDate)
+          })
+      except Exception:
+          return jsonify({"ok": False, "error": "Invalid expiration date format (expected YYYY-MM-DD)"}), 400
+
+    # Option 2: fallback: extend by days (old behavior)
+    days = int(payload.get("days", 365))
     current = patron.AccountExpDate
     base_date = date.today() if (current is None or current < date.today()) else current
     patron.AccountExpDate = base_date + timedelta(days=days)
@@ -293,7 +335,63 @@ def extend_membership():
         "new_expiration": str(patron.AccountExpDate)
     })
 
+# --- Fines API ---
 
+@app.route('/api/check_fines', methods=['GET'])
+def check_fines():
+    patron_id = request.args.get('patron_id', type=int)
+    patron = Patron.query.get(patron_id)
+    if not patron:
+        return jsonify({"ok": False, "error": "Patron not found"}), 404
+    fines = float(patron.FeesOwed or 0)
+    return jsonify({"ok": True, "patron_id": patron.PatronID, "fines_due": fines})
+
+
+#BERKER returns patron details by patron id
+@app.route('/api/patron/<int:patron_id>')
+def api_get_patron(patron_id: int) -> jsonify:
+
+    patron = Patron.query.get(patron_id)
+    
+    if not patron:
+        return jsonify({"ok": False, "error": "Patron not found"}), 404
+    
+    patron_data = {
+        "ok": True,
+        "PatronID": patron.PatronID,
+        "FirstName": patron.PatronFN,
+        "LastName": patron.PatronLN,
+        "FullName": f"{patron.PatronFN} {patron.PatronLN}",
+        "AccountExpDate": str(patron.AccountExpDate),
+        "FeesOwed": float(patron.FeesOwed or 0),
+        "ItemsCheckedOut": patron.ItemsCheckedOut or 0
+    }
+    
+    return jsonify(patron_data)
+
+@app.route('/api/pay_fines', methods=['POST'])
+def pay_fines():
+    payload = request.get_json(silent=True) or request.form
+    try:
+        patron_id = int(payload.get("patron_id", -1))
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "error": "Invalid patron_id"}), 400
+
+    patron = Patron.query.get(patron_id)
+    if not patron:
+        return jsonify({"ok": False, "error": "Patron not found"}), 404
+
+    previous = float(patron.FeesOwed or 0)
+    patron.FeesOwed = 0
+    database.session.commit()
+
+    return jsonify({
+        "ok": True,
+        "message": "Fines paid successfully.",
+        "previous_fines": previous,
+        "new_fines": float(patron.FeesOwed or 0),
+        "patron_id": patron.PatronID
+    })
 
 
 # Checkin demo
@@ -338,7 +436,7 @@ def checkin_item() -> jsonify:
     if not active_checkout: # If no active checkout is found, it's either already 'Available' or 'CheckedIn'
         item_check = LibraryItem.query.get(item_id)
         if item_check and item_check.Availability:
-                return jsonify({"ok": False, "error": "This item is already 'Available'"}), 400
+                return jsonify({"ok": False, "error": "This item is still Available."}), 400
         else:
                 return jsonify({"ok": False, "error": "This item is already 'CheckedIn' and awaiting reshelving"}), 400
 
@@ -386,88 +484,194 @@ def checkin_item() -> jsonify:
 #---------------------------
 @app.route('/checkout', methods=['GET'])
 def checkout_form():
-    return render_template('checkout.html') # loading demo page for now
+    return render_template('checkout.html')
 
 @app.route('/checkout', methods=['POST'])
 def checkout_basic() -> jsonify:
     payload = request.get_json(silent=True) or request.form
     patron_id = int(payload.get('patron_id', -1))
-    item_id = int(payload.get('item_id', -1))
+    item_ids = payload.get('item_ids', [])  #BERKER: getting a list of items for the basket
+
+#BERKER: helps convert to list if it s a string
+    if isinstance(item_ids, str):
+        item_ids = [int(x.strip()) for x in item_ids.split(',') if x.strip().isdigit()]
 
     patron = Patron.query.get(patron_id)
-    item = LibraryItem.query.get(item_id)
 
     if patron is None:
         return jsonify({"ok": False, "error": "Patron not found"})
-    if item is None:
-        return jsonify({"ok": False, "error": "Item not found"})
 
     if membership_expired(patron):
         return jsonify({
             "ok": False,
-            "message": "RENEW MEMBERSHIP NOW!!",
+            "error": "RENEW MEMBERSHIP NOW!!",
             "expired_on": str(patron.AccountExpDate)
         })
+    
+#BERKER: checking if patron has fines
+    if patron.FeesOwed and patron.FeesOwed > 0:
+        return jsonify({
+            "ok": False,
+            "error": f"Patron has fine balance of ${float(patron.FeesOwed):.2f}. Please clear fines before checkout."
+        })
 
-    # --- UPDATED AVAILABILITY CHECK ---
-    if item.Availability is not True:
-        # We can't easily tell if it's 'CheckedOut' or 'CheckedIn'
-        # without another query, so a generic message is best.
-        return jsonify({"ok": False, "error": "Item is not currently available."})
-
+#Berker: checks if basket exceeds item limit (as in patron items + basket items)
     current_count = patron.ItemsCheckedOut or 0
-    if current_count >= MAX_ITEMS_PER_PATRON:
-        return jsonify({"ok": False, "error": "Individual checkout limit reached (20 items)"})
+    if current_count + len(item_ids) > MAX_ITEMS_PER_PATRON:
+        return jsonify({
+            "ok": False, 
+            "error": f"Cannot checkout {len(item_ids)} items. Patron has {current_count} items checked out. Limit is {MAX_ITEMS_PER_PATRON}."
+        })
     
-    # create checkout record
-    new_checkout = Checkout(
-        PatronID=patron_id, 
-        ItemID=item_id, 
-        CheckoutDate=date.today()
-    )
-    database.session.add(new_checkout)
+#BERKER: validate all items before checking out any
+    errors = []
+    items_to_checkout = []
     
-    # --- UPDATE ITEM STATUS ---
-    # Set the status to False (it is no longer 'Available')
-    item.Availability = False 
-    
-    patron.ItemsCheckedOut = current_count + 1
-    database.session.commit()
+    for item_id in item_ids:
+        item = LibraryItem.query.get(item_id)
+        
+        if item is None:
+            errors.append(f"Item ID {item_id} not found")
+            continue
 
-    # (Your existing logic for showing checked out items is fine)
-    active_checkouts = (
-        database.session.query(Checkout, LibraryItem, Patron)
-        .join(LibraryItem, Checkout.ItemID == LibraryItem.ItemID)
-        .join(Patron, Checkout.PatronID == Patron.PatronID)
-        .outerjoin(Return, Return.TransactionID == Checkout.TransactionID)
-        .filter(
-            Return.TransactionID.is_(None),
-            Checkout.PatronID == patron_id
+#BERKER: Checks if specific item already has active checkout(to prevent duplicates)
+        active_checkout = (
+            Checkout.query
+            .outerjoin(Return, Return.TransactionID == Checkout.TransactionID)
+            .filter(
+                Checkout.ItemID == item_id,
+                Return.TransactionID.is_(None)
+            )
+            .first()
         )
-        .order_by(Checkout.CheckoutDate.desc(), Checkout.TransactionID.desc())
-        .all()
-    )
 
-    checked_out_list = [
-        {
-            "TransactionID": checkout.TransactionID,
-            "PatronID": patron.PatronID,
-            "PatronName": f"{patron.PatronFN} {patron.PatronLN}",
+#BERKER: If an active checkout exists, item is already checked out
+        if active_checkout:
+            errors.append(f"Item '{item.ItemTitle}' (ID {item_id}) is already checked out")
+            continue
+
+        if item.Availability is not True:
+            errors.append(f"Item '{item.ItemTitle}' (ID {item_id}) is not available")
+            continue
+        
+        items_to_checkout.append(item)
+
+#BERKER: will return home If there are any errors
+    if errors:
+        return jsonify({"ok": False, "error": " | ".join(errors)})
+    
+    # All items are valid, proceed with checkout
+    checked_out_list = []
+
+    for item in items_to_checkout:
+        rental_days = rental_days_for(item)
+        due_date = date.today() + timedelta(days=rental_days)
+        
+#BERKER for checkout records
+        new_checkout = Checkout(
+            PatronID=patron_id,
+            ItemID=item.ItemID,
+            CheckoutDate=date.today()
+        )
+        database.session.add(new_checkout)
+        
+#BERKER: Updates item availability
+        item.Availability = False
+        
+#BERKER: Adds to response list
+        checked_out_list.append({
             "ItemID": item.ItemID,
             "ItemTitle": item.ItemTitle,
-            "CheckoutDate": str(checkout.CheckoutDate)
-        }
-        for checkout, item, patron in active_checkouts
-    ]
+            "CheckoutDate": str(date.today()),
+            "DueDate": str(due_date)
+        })
+
+#BERKER: Update patron s item count (outside the loop
+    patron.ItemsCheckedOut = current_count + len(items_to_checkout)
+    database.session.commit()
 
     return jsonify({
         "ok": True,
-        "message": "Checkout recorded.",
+        "message": f"Successfully checked out {len(items_to_checkout)} item(s).",
         "patron_id": patron_id,
-        "item_id": item_id,
-        "checkout_date": str(date.today()),
-        "checked_out": item.ItemTitle # checked_out_list # replace with the single item just checked out
+        "items_checked_out": checked_out_list
     })
+
+
+@app.route('/api/items-to-reshelve', methods=['GET'])
+def get_items_to_reshelve():
+    '''
+    Identifies and returns a list of all items that have been returned, 
+    but not yet marked as available
+    '''
+    try:
+    # This query finds items that are 
+    # 1. In library item table
+    # 2. Marked as unavailable (Availability == False)
+    # 3. Have a corresponding return record
+        items_awaiting_reshelve = (
+            database.session.query(LibraryItem)
+            .join(Checkout, LibraryItem.ItemID == Checkout.ItemID)
+            .join(Return, Checkout.TransactionID == Return.TransactionID)
+            .filter(LibraryItem.Availability == False)
+            .distinct(LibraryItem.ItemID)
+            .order_by(LibraryItem.ItemTitle)
+            .all()         # Item is not yet available
+        )
+
+        #format list for front end
+        output_list = [
+            {
+                "ItemID": item.ItemID,
+                "ItemTitle": item.ItemTitle,
+                "ShelfCode": item.ShelfCode
+            }
+            for item in items_awaiting_reshelve
+        ]
+        
+        return jsonify(output_list)
+    
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Database error: {str(e)}"}), 500
+    
+@app.route('/api/reshelve', methods=['POST'])
+def reshelve_items():
+    '''
+    Handles the reshelveing of a single item, making 
+    it available and logging the reshelve date.
+    '''
+    payload = request.get_json(silent=True) or request.form
+    item_id = int(payload.get('item_id', -1))
+                  
+    if item_id == -1:
+        return jsonify({"ok": False, "error": "ItemID is required"}), 400
+    
+    # Use database.session.get() which is the modern way
+    item = database.session.get(LibraryItem, item_id)
+
+    if item is None:
+        return jsonify({"ok": False, "error": f"Item with ID {item_id} not found"}), 404
+    
+    #update items vailability and reshelve date
+    try:
+        item.Availability = True
+        item.DateReshelved = date.today()
+        database.session.commit()
+
+        return jsonify({
+            "ok": True,
+            "message": f"Item '{item.ItemTitle}' (ID: {item.ItemID}) reshelved successfully.",
+        })
+    
+    except Exception as e:
+        database.session.rollback()
+        return jsonify({"ok": False, "error": f"Database error: {str(e)}"}), 500
+
+@app.route('/reshelve', methods=['GET'])
+def reshelve_form():
+    '''Serves the HTML page for reshelving items.'''
+    return render_template('reshelve.html')
+
 
 # Utility
 # ----------------------------
