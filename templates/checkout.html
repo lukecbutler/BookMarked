@@ -130,6 +130,7 @@
       <div class="mb-3">
         <label for="patron_id" class="form-label">Patron ID</label>
         <input name="patron_id" id="patron_id" type="number" class="form-control" required>
+        <div id="patron-name-display" style="color: #2e7d32; font-weight: 600; margin-top: 0.5rem;"></div>
       </div>
 
       <div class="mb-3 p-3 border rounded-3 bg-white">
@@ -335,16 +336,37 @@ function lockItemControls(locked) {
 }
 
 // Relock & clear fines messages when Patron ID changes
-document.getElementById('patron_id')?.addEventListener('input', () => {
+document.getElementById('patron_id')?.addEventListener('input', async () => {
   finesCleared = false;
   lockItemControls(true);
   const s = document.getElementById('fine-status');
   const r = document.getElementById('fine-result');
   const a = document.getElementById('fine-actions');
+  const patronName = document.getElementById('patron-name-display');
+  
   if (s) s.textContent = '';
   if (r) r.textContent = '';
   if (a) a.style.display = 'none';
+  if (patronName) patronName.textContent = '';
+  
+  // BERKER: fetching lib member name
+  const patronId = document.getElementById('patron_id').value;
+  if (patronId && patronName) {
+    try {
+      const resp = await fetch(`/api/patron/${patronId}`);
+      const data = await resp.json();
+      if (data.ok) {
+        patronName.textContent = `Patron: ${data.FullName}`;
+      } else {
+        patronName.textContent = 'Patron not found';
+        patronName.style.color = '#d32f2f';
+      }
+    } catch (err) {
+      console.error('Error fetching patron:', err);
+    }
+  }
 });
+
 
 // --- API helpers ---
 async function apiCheckFines(patronId){
