@@ -156,9 +156,12 @@
 
         <!-- Extend Membership (only shows when expired) -->
         <div id="extend-membership-section" style="margin-top:12px; display:none;">
-          <button type="button" id="btn-extend-membership" style="background:#2e7d32; color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:600;">
-            Extend Membership (+350 days)
-          </button>
+          <label for="new-expiration" style="font-weight:600; color:#2e7d32;">New Expiration Date:</label>
+<input type="date" id="new-expiration" style="margin-left:6px; border-radius:6px; border:1px solid #ccc; padding:4px;">
+<button type="button" id="btn-extend-membership" style="background:#2e7d32; color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:600;">
+  Extend Membership
+</button>
+
           <button type="button" id="btn-abort-process" style="background:#d32f2f; color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:600; margin-left:6px;">
             Abort Process
           </button>  
@@ -616,14 +619,18 @@ document.getElementById('btn-extend-membership')?.addEventListener('click', asyn
     resultEl.textContent = 'Extending membership...';
     resultEl.style.color = '#666';
 
-    const resp = await fetch('/api/extend_membership', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        patron_id: parseInt(patronId),
-        days: 350
-      })
-    });
+    // Get chosen date
+const newExpDate = document.getElementById('new-expiration').value;
+
+const resp = await fetch('/api/extend_membership', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    patron_id: parseInt(patronId),
+    expiration_date: newExpDate   // send date instead of days
+  })
+});
+
 
 
 
