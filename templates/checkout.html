@@ -150,9 +150,13 @@
         
         <!-- Sai's pay fines Button was missing, adding it back-->
         <div id="fine-actions" style="margin-top:12px; display:none;">
-          <button type="button" id="btn-pay-fines" class="btn btn-success btn-sm">Pay Fines</button>
-          <span id="fine-result" style="margin-left:8px; font-family: monospace;"></span>
-        </div>
+  <button type="button" id="btn-pay-fines" class="btn btn-success btn-sm">Pay Fines</button>
+  <button type="button" id="btn-cancel-fines" class="btn btn-outline-secondary btn-sm" style="margin-left:6px;">
+    Cancel
+  </button>
+  <span id="fine-result" style="margin-left:8px; font-family: monospace;"></span>
+</div>
+
 
         <!-- Extend Membership (only shows when expired) -->
         <div id="extend-membership-section" style="margin-top:12px; display:none;">
@@ -604,6 +608,13 @@ document.getElementById('btn-pay-fines')?.addEventListener('click', async () => 
     console.error(err);
   }
 });
+// Cancel fines button handler
+document.getElementById('btn-cancel-fines')?.addEventListener('click', () => {
+  if (confirm('Patron is not ready to Pay?')) {
+    window.location.href = '/';
+  }
+});
+
 
 // extending membership
 document.getElementById('btn-extend-membership')?.addEventListener('click', async () => {
