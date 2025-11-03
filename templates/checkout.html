@@ -147,6 +147,12 @@
         <h5>Patron Information</h5>
         <div id="patron-details"></div>
         <div id="patron-status"></div>
+        
+        <!-- Sai's pay fines Button was missing, adding it back-->
+        <div id="fine-actions" style="margin-top:12px; display:none;">
+          <button type="button" id="btn-pay-fines" class="btn btn-success btn-sm">Pay Fines</button>
+          <span id="fine-result" style="margin-left:8px; font-family: monospace;"></span>
+        </div>
       </div>
 
       <!-- Item Section (disabled until patron ok) -->
@@ -497,6 +503,84 @@
 
     // Initialize
     updateBasket();
+
+function displayPatronInfo(patron) {
+  const detailsDiv = document.getElementById('patron-details');
+  const statusDiv = document.getElementById('patron-status');
+  const fineActions = document.getElementById('fine-actions');
+
+  detailsDiv.innerHTML = `
+    <strong>Patron Name:</strong> ${patron.full_name}<br>
+    <strong>Patron ID:</strong> ${patron.patron_id}<br>
+    <strong>Items Checked Out:</strong> ${patron.items_checked_out}<br>
+    <strong>Membership Expiration:</strong> ${patron.expiration_date}<br>
+    <strong>Fines Owed:</strong> $${patron.fines_due.toFixed(2)}
+  `;
+
+  let statusHTML = '';
+  if (patron.expired) {
+    statusHTML += '<div class="patron-warning">⚠️ MEMBERSHIP EXPIRED</div>';
+  } else {
+    statusHTML += '<div class="patron-ok">✓ Membership Active</div>';
+  }
+
+  if (patron.fines_due > 0) {
+    statusHTML += '<div class="patron-warning">⚠️ HAS OUTSTANDING FINES</div>';
+    fineActions.style.display = 'block'; // Show pay button
+  } else {
+    statusHTML += '<div class="patron-ok">✓ No Outstanding Fines</div>';
+    fineActions.style.display = 'none'; // Hide pay button
+  }
+
+  statusDiv.innerHTML = statusHTML;
+  document.getElementById('patron-info').classList.add('show');
+}
+
+// Pay Fines button handler
+document.getElementById('btn-pay-fines')?.addEventListener('click', async () => {
+  const patronId = currentPatron.patron_id;
+  const result = document.getElementById('fine-result');
+
+  if (!patronId) {
+    alert('Please check patron first');
+    return;
+  }
+
+  try {
+    result.textContent = 'Processing payment...';
+    
+    const resp = await fetch('/api/pay_fines', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ patron_id: parseInt(patronId) })
+    });
+    
+    const data = await resp.json();
+
+    if (data.ok) {
+      result.textContent = `✓ Paid $${(data.previous_fines || 0).toFixed(2)}`;
+      result.style.color = '#2e7d32';
+      
+      // Update patron info
+      currentPatron.fines_due = 0;
+      displayPatronInfo(currentPatron);
+      
+      // Re-check eligibility
+      showMessage('Fines cleared! Patron is now eligible for checkout.', 'success');
+      document.getElementById('item-section').classList.remove('disabled-section');
+      
+    } else {
+      result.textContent = data.error || 'Payment failed';
+      result.style.color = '#d32f2f';
+    }
+  } catch (err) {
+    result.textContent = 'Network error';
+    result.style.color = '#d32f2f';
+    console.error(err);
+  }
+});
+
+
   </script>
 </body>
 </html>
