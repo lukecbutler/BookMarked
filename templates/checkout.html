@@ -153,6 +153,17 @@
           <button type="button" id="btn-pay-fines" class="btn btn-success btn-sm">Pay Fines</button>
           <span id="fine-result" style="margin-left:8px; font-family: monospace;"></span>
         </div>
+
+        <!-- Extend Membership (only shows when expired) -->
+        <div id="extend-membership-section" style="margin-top:12px; display:none;">
+          <button type="button" id="btn-extend-membership" style="background:#2e7d32; color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:600;">
+            Extend Membership (+350 days)
+          </button>
+          <button type="button" id="btn-abort-process" style="background:#d32f2f; color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:600; margin-left:6px;">
+            Abort Process
+          </button>  
+          <span id="extend-result" style="margin-left:8px; font-family: monospace;"></span>
+        </div>
       </div>
 
       <!-- Item Section (disabled until patron ok) -->
@@ -200,6 +211,14 @@
       </div>
     </div>
 
+  <div style="text-align:center; margin-top:16px;">
+    <button 
+      type="button" 
+      id="btn-go-home" 
+      style="background:#1565c0; color:#fff; border:none; padding:8px 16px; border-radius:8px; font-weight:600;">
+      ⬅️ Return to Main
+    </button>
+  </div>    
     <footer>© 2025 BookMarked | All rights reserved</footer>
   </div>
 
@@ -508,6 +527,7 @@ function displayPatronInfo(patron) {
   const detailsDiv = document.getElementById('patron-details');
   const statusDiv = document.getElementById('patron-status');
   const fineActions = document.getElementById('fine-actions');
+  const extendSection  = document.getElementById('extend-membership-section');
 
   detailsDiv.innerHTML = `
     <strong>Patron Name:</strong> ${patron.full_name}<br>
@@ -520,16 +540,18 @@ function displayPatronInfo(patron) {
   let statusHTML = '';
   if (patron.expired) {
     statusHTML += '<div class="patron-warning">⚠️ MEMBERSHIP EXPIRED</div>';
+    if (extendSection) extendSection.style.display = 'block';
   } else {
     statusHTML += '<div class="patron-ok">✓ Membership Active</div>';
+    if (extendSection) extendSection.style.display = 'none';
   }
 
   if (patron.fines_due > 0) {
     statusHTML += '<div class="patron-warning">⚠️ HAS OUTSTANDING FINES</div>';
-    fineActions.style.display = 'block'; // Show pay button
+    fineActions.style.display = 'block';
   } else {
     statusHTML += '<div class="patron-ok">✓ No Outstanding Fines</div>';
-    fineActions.style.display = 'none'; // Hide pay button
+    fineActions.style.display = 'none';
   }
 
   statusDiv.innerHTML = statusHTML;
@@ -580,7 +602,68 @@ document.getElementById('btn-pay-fines')?.addEventListener('click', async () => 
   }
 });
 
+// extending membership
+document.getElementById('btn-extend-membership')?.addEventListener('click', async () => {
+  const patronId = currentPatron?.patron_id;
+  const resultEl = document.getElementById('extend-result');
 
+  if (!patronId) {
+    alert('Please check patron first');
+    return;
+  }
+
+  try {
+    resultEl.textContent = 'Extending membership...';
+    resultEl.style.color = '#666';
+
+    const resp = await fetch('/api/extend_membership', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        patron_id: parseInt(patronId),
+        days: 350
+      })
+    });
+
+
+
+    const data = await resp.json();
+
+    if (data.ok) {
+      const newExp = data.new_expiration || data.expiration_date;
+      currentPatron.expired = false;
+      if (newExp) currentPatron.expiration_date = newExp;
+
+      displayPatronInfo(currentPatron);
+
+      if (currentPatron.fines_due === 0) {
+        showMessage('Membership extended! Patron is now eligible for checkout.', 'success');
+        document.getElementById('item-section').classList.remove('disabled-section');
+      }
+
+      resultEl.textContent = `✓ Extended to ${currentPatron.expiration_date}`;
+      resultEl.style.color = '#2e7d32';
+    } else {
+      resultEl.textContent = data.error || 'Failed to extend';
+      resultEl.style.color = '#d32f2f';
+    }
+  } catch (err) {
+    console.error(err);
+    resultEl.textContent = 'Network error';
+    resultEl.style.color = '#d32f2f';
+  }
+});
+
+// Abort checkout if membership cant be extended
+document.getElementById('btn-abort-process')?.addEventListener('click', () => {
+  if (confirm('Are you sure?')) {
+    window.location.href = '/';
+  }
+});
+
+document.getElementById('btn-go-home')?.addEventListener('click', () => {
+  window.location.href = '/';
+});
   </script>
 </body>
 </html>
