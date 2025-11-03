@@ -18,6 +18,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 database = SQLAlchemy(app)
 
 #### --- Database Models --- ####
+#Created by Jake Rouse
 class LibraryBranch(database.Model):
     __tablename__ = 'LibraryBranch'
 
