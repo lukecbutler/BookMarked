@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BookMarked · Checkout</title>
+
+  <!-- Bootstrap CSS (kept to match other pages) -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    :root{
+      --brand-green: #1b5e20;
+      --brand-green-light: #e8f5e9;
+      --brand-green-dark: #2e7d32;
+      --card-max-width: 640px;
+    }
+
+    body {
+      background: linear-gradient(135deg, rgba(232,245,233,0.5), rgba(200,230,201,0.5)),
+                  url('https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=1950&q=80');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      min-height: 100vh;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 2rem;
+      margin: 0;
+    }
+
+    .header {
+      text-align: center;
+      margin-top: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .header h1 {
+      font-size: 2.6rem;
+      font-weight: 900;
+      color: var(--brand-green);
+      margin: 0;
+    }
+    .header p { margin: 0.25rem 0 0; color:#444; }
+
+    .card.checkout-card {
+      background: rgba(255,255,255,0.95);
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      padding: 1.75rem;
+      width: 100%;
+      max-width: var(--card-max-width);
+      position: relative;
+      overflow: hidden;
+    }
+    .card.checkout-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: url('https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=800&q=80')
+                  center/cover no-repeat;
+      opacity: 0.12;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .card.checkout-card > * { position: relative; z-index: 1; }
+
+    .card.checkout-card h2 {
+      color: var(--brand-green);
+      text-align: center;
+      margin-bottom: 1rem;
+      font-weight: 700;
+    }
+
+    label { color: var(--brand-green); font-weight: 600; }
+    input[type="number"] {
+      background: #f1f8e9;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 8px 10px;
+      width: 200px;
+    }
+    button {
+      border-radius: 10px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    #check-patron-btn, .email-btn, .new-checkout-btn {
+      background: var(--brand-green-dark);
+      color: #fff;
+      border: none;
+    }
+    #add-btn { background: #007bff; color: #fff; border: none; }
+    #confirm-btn { background: #2e7d32; color: #fff; border: none; border-radius: 10px; padding: 8px 14px; }
+    .remove-btn { background:#dc3545; color:#fff; border:none; border-radius:6px; padding:6px 10px; }
+
+    .patron-info { margin-top: 12px; padding: 12px; border-radius:10px; background:#fff; border:1px solid #e6f2e6; display:none; }
+    .patron-info.show { display:block; }
+
+    .patron-warning { color:#d9534f; font-weight:700; margin-top:8px; }
+    .patron-ok { color:#2e7d32; font-weight:700; margin-top:8px; }
+
+    .basket { margin-top: 12px; padding: 12px; border-radius: 10px; background: #f9fff7; border:1px solid #e6f2e6; }
+    .basket-item { padding: 8px; margin: 6px 0; background: white; border:1px solid #eee; border-radius:8px; display:flex; justify-content:space-between; align-items:center; }
+    .hidden { display: none; }
+
+    #item-info { margin-top:10px; padding:8px; background:#f0f0f0; border-radius:8px; display:none; max-width:100%; }
+    #message { margin-top:10px; min-height:20px; font-family: monospace; }
+
+    .receipt { margin-top: 16px; padding: 18px; border-radius: 12px; background: #f8f9fa; border: 2px solid #28a745; display:none; }
+    .receipt h2 { color:#28a745; margin-top:0; }
+    .receipt-section { margin-top:12px; padding:10px; background:#fff; border-radius:8px; border:1px solid #eee; }
+
+    .action-buttons { margin-top: 12px; display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-start; }
+
+    footer { margin-top: 14px; font-size: 0.9rem; color:#666; text-align:center; }
+    @media (max-width:560px){
+      input[type="number"]{ width:100%; max-width:260px; }
+      .card.checkout-card{ padding:1rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📚 BookMarked</h1>
+    <p>WPL Library Software</p>
+  </div>
+
+  <div class="card checkout-card">
+    <h2>Checkout (multiple items)</h2>
+
+    <div id="checkout-section">
+      <!-- Patron Lookup -->
+      <div class="d-flex flex-column align-items-start">
+        <label for="patron_id">Patron ID</label>
+        <div class="d-flex gap-2 align-items-center" style="flex-wrap:wrap;">
+          <input id="patron_id" type="number" required>
+          <button type="button" id="check-patron-btn">Check Patron</button>
+        </div>
+      </div>
+
+      <!-- Patron Info -->
+      <div id="patron-info" class="patron-info">
+        <h5>Patron Information</h5>
+        <div id="patron-details"></div>
+        <div id="patron-status"></div>
+        
+        <!-- Sai's pay fines Button was missing, adding it back-->
+        <div id="fine-actions" style="margin-top:12px; display:none;">
+  <button type="button" id="btn-pay-fines" class="btn btn-success btn-sm">Pay Fines</button>
+  <button type="button" id="btn-cancel-fines" class="btn btn-outline-secondary btn-sm" style="margin-left:6px;">
+    Cancel
+  </button>
+  <span id="fine-result" style="margin-left:8px; font-family: monospace;"></span>
+</div>
+
+
+        <!-- Extend Membership (only shows when expired) -->
+        <div id="extend-membership-section" style="margin-top:12px; display:none;">
+          <label for="new-expiration" style="font-weight:600; color:#2e7d32;">New Expiration Date:</label>
+<input type="date" id="new-expiration" style="margin-left:6px; border-radius:6px; border:1px solid #ccc; padding:4px;">
+<button type="button" id="btn-extend-membership" style="background:#2e7d32; color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:600;">
+  Extend Membership
+</button>
+
+          <button type="button" id="btn-abort-process" style="background:#d32f2f; color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:600; margin-left:6px;">
+            Abort Process
+          </button>  
+          <span id="extend-result" style="margin-left:8px; font-family: monospace;"></span>
+        </div>
+      </div>
+
+      <!-- Item Section (disabled until patron ok) -->
+      <div id="item-section" style="margin-top:12px;">
+        <hr>
+        <h5 style="color:var(--brand-green);">Add Items to Basket</h5>
+        <div class="d-flex gap-2 align-items-center" style="flex-wrap:wrap;">
+          <input id="item_id" type="number" placeholder="Item ID">
+          <button type="button" id="add-btn">Add to Basket</button>
+        </div>
+
+        <div id="item-info" aria-live="polite"></div>
+      </div>
+
+      <!-- Basket -->
+      <div class="basket">
+        <h5>Basket (<span id="basket-count">0</span> items)</h5>
+        <div id="basket-items"><em>Basket is empty</em></div>
+        <div style="margin-top:10px;">
+          <button type="button" id="confirm-btn" disabled>Confirm Checkout</button>
+        </div>
+      </div>
+
+      <div id="message" role="status" aria-live="polite"></div>
+    </div>
+
+    <!-- Receipt Section -->
+    <div id="receipt-section" class="receipt hidden" aria-live="polite">
+      <h2>✓ Checkout Successful!</h2>
+
+      <div class="receipt-section">
+        <h6>Patron Information</h6>
+        <div id="receipt-patron-info"></div>
+      </div>
+
+      <div class="receipt-section">
+        <h6>Items Checked Out</h6>
+        <div id="receipt-items"></div>
+      </div>
+
+      <div class="action-buttons">
+        <button class="email-btn" onclick="alert('Email functionality coming soon!')">📧 Email Receipt</button>
+        <button class="print-btn" onclick="window.print()">🖨️ Print Receipt</button>
+        <button class="new-checkout-btn" onclick="startNewCheckout()">🔄 New Checkout</button>
+      </div>
+    </div>
+
+  <div style="text-align:center; margin-top:16px;">
+    <button 
+      type="button" 
+      id="btn-go-home" 
+      style="background:#1565c0; color:#fff; border:none; padding:8px 16px; border-radius:8px; font-weight:600;">
+      ⬅️ Return to Main
+    </button>
+  </div>    
+    <footer>© 2025 BookMarked | All rights reserved</footer>
+  </div>
+
+  <script>
+    let basket = [];
+    let currentPatron = null;
+    let itemLookupTimeout;
+
+    // Check patron info when button is clicked
+    document.getElementById('check-patron-btn').addEventListener('click', async () => {
+      const patronId = document.getElementById('patron_id').value.trim();
+      
+      if (!patronId) {
+        showMessage('Please enter a Patron ID', 'error');
+        return;
+      }
+
+      try {
+        // Fetch patron info from multiple endpoints
+        const [patronResp, membershipResp, finesResp] = await Promise.all([
+          fetch(`/api/patron/${patronId}`),
+          fetch(`/api/check_membership?patron_id=${patronId}`),
+          fetch(`/api/check_fines?patron_id=${patronId}`)
+        ]);
+
+        const patronData = await patronResp.json();
+        const membershipData = await membershipResp.json();
+        const finesData = await finesResp.json();
+
+        if (!patronData.ok || !membershipData.ok || !finesData.ok) {
+          showMessage('Patron not found', 'error');
+          document.getElementById('patron-info').classList.remove('show');
+          document.getElementById('item-section').classList.add('disabled-section');
+          return;
+        }
+
+        // Store patron info
+        currentPatron = {
+          patron_id: patronId,
+          full_name: patronData.FullName,
+          first_name: patronData.FirstName,
+          last_name: patronData.LastName,
+          expired: membershipData.expired,
+          expiration_date: membershipData.expiration_date,
+          fines_due: finesData.fines_due,
+          items_checked_out: patronData.ItemsCheckedOut
+        };
+
+        // Display patron info
+        displayPatronInfo(currentPatron);
+
+        // Check if patron can checkout
+        if (currentPatron.expired) {
+          showMessage('Patron membership is EXPIRED. Please renew membership before checkout.', 'error');
+          document.getElementById('item-section').classList.add('disabled-section');
+          return;
+        }
+
+        if (currentPatron.fines_due > 0) {
+          showMessage(`Patron has outstanding fines of $${currentPatron.fines_due.toFixed(2)}. Please clear fines before checkout.`, 'error');
+          document.getElementById('item-section').classList.add('disabled-section');
+          return;
+        }
+
+        // Patron is good to go
+        showMessage('Patron is eligible for checkout!', 'success');
+        document.getElementById('item-section').classList.remove('disabled-section');
+
+      } catch (err) {
+        showMessage('Error checking patron information', 'error');
+        console.error(err);
+      }
+    });
+
+    // Display patron information
+    function displayPatronInfo(patron) {
+      const detailsDiv = document.getElementById('patron-details');
+      const statusDiv = document.getElementById('patron-status');
+
+      detailsDiv.innerHTML = `
+        <strong>Patron Name:</strong> ${patron.full_name}<br>
+        <strong>Patron ID:</strong> ${patron.patron_id}<br>
+        <strong>Items Checked Out:</strong> ${patron.items_checked_out}<br>
+        <strong>Membership Expiration:</strong> ${patron.expiration_date}<br>
+        <strong>Fines Owed:</strong> $${patron.fines_due.toFixed(2)}
+      `;
+
+      let statusHTML = '';
+      if (patron.expired) {
+        statusHTML += '<div class="patron-warning">⚠️ MEMBERSHIP EXPIRED</div>';
+      } else {
+        statusHTML += '<div class="patron-ok">✓ Membership Active</div>';
+      }
+
+      if (patron.fines_due > 0) {
+        statusHTML += '<div class="patron-warning">⚠️ HAS OUTSTANDING FINES</div>';
+      } else {
+        statusHTML += '<div class="patron-ok">✓ No Outstanding Fines</div>';
+      }
+
+      statusDiv.innerHTML = statusHTML;
+      document.getElementById('patron-info').classList.add('show');
+    }
+
+    // Auto-lookup item info as you type
+    document.getElementById('item_id').addEventListener('input', (e) => {
+      clearTimeout(itemLookupTimeout);
+      const itemId = e.target.value.trim();
+      
+      if (!itemId) {
+        document.getElementById('item-info').style.display = 'none';
+        return;
+      }
+
+      itemLookupTimeout = setTimeout(async () => {
+        try {
+          const resp = await fetch(`/api/item/${itemId}`);
+          const data = await resp.json();
+          
+          const infoDiv = document.getElementById('item-info');
+          const detailsSpan = document.getElementById('item-details');
+          
+          if (data.ok) {
+            detailsSpan.innerHTML = `
+              <strong>${data.ItemTitle}</strong><br>
+              Type: ${data.ItemType} | Available: ${data.Availability ? 'Yes' : 'No'} | Shelf: ${data.ShelfCode}
+            `;
+            infoDiv.style.display = 'block';
+          } else {
+            detailsSpan.textContent = data.error || 'Item not found';
+            infoDiv.style.display = 'block';
+          }
+        } catch (err) {
+          console.error('Error fetching item:', err);
+        }
+      }, 500);
+    });
+
+    // Add item to basket
+    document.getElementById('add-btn').addEventListener('click', async () => {
+      if (!currentPatron) {
+        showMessage('Please check patron information first', 'error');
+        return;
+      }
+
+      const itemId = document.getElementById('item_id').value.trim();
+      
+      if (!itemId) {
+        showMessage('Please enter an Item ID', 'error');
+        return;
+      }
+
+      // Check if already in basket
+      if (basket.find(item => item.ItemID == itemId)) {
+        showMessage('Item already in basket', 'error');
+        return;
+      }
+
+      // Fetch item details
+      try {
+        const resp = await fetch(`/api/item/${itemId}`);
+        const data = await resp.json();
+        
+        if (!data.ok) {
+          showMessage(data.error || 'Item not found', 'error');
+          return;
+        }
+
+        if (!data.Availability) {
+          showMessage('Item is not available for checkout', 'error');
+          return;
+        }
+
+        // Add to basket
+        basket.push(data);
+        updateBasket();
+        document.getElementById('item_id').value = '';
+        document.getElementById('item-info').style.display = 'none';
+        showMessage('Item added to basket', 'success');
+      } catch (err) {
+        showMessage('Error adding item', 'error');
+        console.error(err);
+      }
+    });
+
+    // Remove item from basket
+    function removeFromBasket(itemId) {
+      basket = basket.filter(item => item.ItemID != itemId);
+      updateBasket();
+      showMessage('Item removed from basket', 'success');
+    }
+
+    // Update basket display
+    function updateBasket() {
+      const basketItems = document.getElementById('basket-items');
+      const basketCount = document.getElementById('basket-count');
+      const confirmBtn = document.getElementById('confirm-btn');
+
+      basketCount.textContent = basket.length;
+
+      if (basket.length === 0) {
+        basketItems.innerHTML = '<em>Basket is empty</em>';
+        confirmBtn.disabled = true;
+      } else {
+        basketItems.innerHTML = basket.map(item => `
+          <div class="basket-item">
+            <span><strong>${item.ItemTitle}</strong> (ID: ${item.ItemID})</span>
+            <button class="remove-btn" onclick="removeFromBasket(${item.ItemID})">Remove</button>
+          </div>
+        `).join('');
+        confirmBtn.disabled = false;
+      }
+    }
+
+    // Confirm checkout
+    document.getElementById('confirm-btn').addEventListener('click', async () => {
+      if (!currentPatron) {
+        showMessage('Please check patron information first', 'error');
+        return;
+      }
+
+      const patronId = document.getElementById('patron_id').value.trim();
+      
+      if (!patronId) {
+        showMessage('Please enter a Patron ID', 'error');
+        return;
+      }
+
+      if (basket.length === 0) {
+        showMessage('Basket is empty', 'error');
+        return;
+      }
+
+      const itemIds = basket.map(item => item.ItemID);
+
+      try {
+        const resp = await fetch('/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            patron_id: parseInt(patronId),
+            item_ids: itemIds
+          })
+        });
+
+        const data = await resp.json();
+
+        if (data.ok) {
+          // Show receipt
+          showReceipt(currentPatron, data.items_checked_out);
+        } else {
+          showMessage(data.error, 'error');
+        }
+      } catch (err) {
+        showMessage('Error during checkout', 'error');
+        console.error(err);
+      }
+    });
+
+    // Show receipt after successful checkout
+    function showReceipt(patron, checkedOutItems) {
+      // Hide checkout section
+      document.getElementById('checkout-section').classList.add('hidden');
+      
+      // Populate receipt
+      const patronInfo = document.getElementById('receipt-patron-info');
+      patronInfo.innerHTML = `
+        <strong>Name:</strong> ${patron.full_name}<br>
+        <strong>Patron ID:</strong> ${patron.patron_id}<br>
+        <strong>Date:</strong> ${new Date().toLocaleDateString()}
+      `;
+
+      const itemsList = document.getElementById('receipt-items');
+      itemsList.innerHTML = checkedOutItems.map(item => `
+        <div class="receipt-item">
+          <strong>${item.ItemTitle}</strong> (ID: ${item.ItemID})<br>
+          <small>Checkout Date: ${item.CheckoutDate} | Due Date: ${item.DueDate}</small>
+        </div>
+      `).join('');
+
+      // Show receipt section
+      document.getElementById('receipt-section').classList.remove('hidden');
+      document.getElementById('receipt-section').style.display = 'block';
+    }
+
+    // Start new checkout (refresh page)
+    function startNewCheckout() {
+      location.reload();
+    }
+
+    // Show message helper
+    function showMessage(msg, type) {
+      const msgDiv = document.getElementById('message');
+      msgDiv.textContent = msg;
+      msgDiv.className = type;
+      setTimeout(() => {
+        msgDiv.textContent = '';
+        msgDiv.className = '';
+      }, 5000);
+    }
+
+    // Initialize
+    updateBasket();
+
+function displayPatronInfo(patron) {
+  const detailsDiv = document.getElementById('patron-details');
+  const statusDiv = document.getElementById('patron-status');
+  const fineActions = document.getElementById('fine-actions');
+  const extendSection  = document.getElementById('extend-membership-section');
+
+  detailsDiv.innerHTML = `
+    <strong>Patron Name:</strong> ${patron.full_name}<br>
+    <strong>Patron ID:</strong> ${patron.patron_id}<br>
+    <strong>Items Checked Out:</strong> ${patron.items_checked_out}<br>
+    <strong>Membership Expiration:</strong> ${patron.expiration_date}<br>
+    <strong>Fines Owed:</strong> $${patron.fines_due.toFixed(2)}
+  `;
+
+  let statusHTML = '';
+  if (patron.expired) {
+    statusHTML += '<div class="patron-warning">⚠️ MEMBERSHIP EXPIRED</div>';
+    if (extendSection) extendSection.style.display = 'block';
+  } else {
+    statusHTML += '<div class="patron-ok">✓ Membership Active</div>';
+    if (extendSection) extendSection.style.display = 'none';
+  }
+
+  if (patron.fines_due > 0) {
+    statusHTML += '<div class="patron-warning">⚠️ HAS OUTSTANDING FINES</div>';
+    fineActions.style.display = 'block';
+  } else {
+    statusHTML += '<div class="patron-ok">✓ No Outstanding Fines</div>';
+    fineActions.style.display = 'none';
+  }
+
+  statusDiv.innerHTML = statusHTML;
+  document.getElementById('patron-info').classList.add('show');
+}
+
+// Pay Fines button handler
+document.getElementById('btn-pay-fines')?.addEventListener('click', async () => {
+  const patronId = currentPatron.patron_id;
+  const result = document.getElementById('fine-result');
+
+  if (!patronId) {
+    alert('Please check patron first');
+    return;
+  }
+
+  try {
+    result.textContent = 'Processing payment...';
+    
+    const resp = await fetch('/api/pay_fines', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ patron_id: parseInt(patronId) })
+    });
+    
+    const data = await resp.json();
+
+    if (data.ok) {
+      result.textContent = `✓ Paid $${(data.previous_fines || 0).toFixed(2)}`;
+      result.style.color = '#2e7d32';
+      
+      // Update patron info
+      currentPatron.fines_due = 0;
+      displayPatronInfo(currentPatron);
+      
+      // Re-check eligibility
+      showMessage('Fines cleared! Patron is now eligible for checkout.', 'success');
+      document.getElementById('item-section').classList.remove('disabled-section');
+      
+    } else {
+      result.textContent = data.error || 'Payment failed';
+      result.style.color = '#d32f2f';
+    }
+  } catch (err) {
+    result.textContent = 'Network error';
+    result.style.color = '#d32f2f';
+    console.error(err);
+  }
+});
+// Cancel fines button handler
+document.getElementById('btn-cancel-fines')?.addEventListener('click', () => {
+  if (confirm('Patron is not ready to Pay?')) {
+    window.location.href = '/';
+  }
+});
+
+
+// extending membership
+document.getElementById('btn-extend-membership')?.addEventListener('click', async () => {
+  const patronId = currentPatron?.patron_id;
+  const resultEl = document.getElementById('extend-result');
+
+  if (!patronId) {
+    alert('Please check patron first');
+    return;
+  }
+
+  try {
+    resultEl.textContent = 'Extending membership...';
+    resultEl.style.color = '#666';
+
+    // Get chosen date
+const newExpDate = document.getElementById('new-expiration').value;
+
+const resp = await fetch('/api/extend_membership', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    patron_id: parseInt(patronId),
+    expiration_date: newExpDate   // send date instead of days
+  })
+});
+
+
+
+
+    const data = await resp.json();
+
+    if (data.ok) {
+      const newExp = data.new_expiration || data.expiration_date;
+      currentPatron.expired = false;
+      if (newExp) currentPatron.expiration_date = newExp;
+
+      displayPatronInfo(currentPatron);
+
+      if (currentPatron.fines_due === 0) {
+        showMessage('Membership extended! Patron is now eligible for checkout.', 'success');
+        document.getElementById('item-section').classList.remove('disabled-section');
+      }
+
+      resultEl.textContent = `✓ Extended to ${currentPatron.expiration_date}`;
+      resultEl.style.color = '#2e7d32';
+    } else {
+      resultEl.textContent = data.error || 'Failed to extend';
+      resultEl.style.color = '#d32f2f';
+    }
+  } catch (err) {
+    console.error(err);
+    resultEl.textContent = 'Network error';
+    resultEl.style.color = '#d32f2f';
+  }
+});
+
+// Abort checkout if membership cant be extended
+document.getElementById('btn-abort-process')?.addEventListener('click', () => {
+  if (confirm('Are you sure?')) {
+    window.location.href = '/';
+  }
+});
+
+document.getElementById('btn-go-home')?.addEventListener('click', () => {
+  window.location.href = '/';
+});
+  </script>
+</body>
+</html>
