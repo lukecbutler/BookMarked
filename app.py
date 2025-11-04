@@ -2,6 +2,7 @@ import os
 from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 from datetime import date,timedelta
+from sqlalchemy import func
 
 app = Flask(__name__)
 
@@ -18,6 +19,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 database = SQLAlchemy(app)
 
 #### --- Database Models --- ####
+#Created by Jake Rouse
 class LibraryBranch(database.Model):
     __tablename__ = 'LibraryBranch'
 
@@ -90,6 +92,13 @@ def membership_expired(patron: Patron) -> bool:
 def rental_days_for(item: LibraryItem) -> int:
     item_type = ItemType.query.get(item.ItemType) if item else None
     return int(item_type.RentalLength) if (item_type and item_type.RentalLength) else 0
+
+#Jake Rouse: Cacluates the due date for a checkout transaction
+#Note: We need to change the rental length attribute for ItemType.
+
+#def calc_return_date(Checkoutdate: TEXT, rentalLength: TEXT) -> TEXT:
+#    return func.date(Checkoutdate, rentalLength)
+
 
 #### --- Routes --- ####
 MAX_ITEMS_PER_PATRON = 20
@@ -223,16 +232,13 @@ def api_branches():
     ]
     return jsonify(branch_list)
 
-#returns info for a specific item by Item id, eplaces dropdown menu approach
+#BERKER: to get item details by ID (replaced dropdown approach)
 @app.route('/api/item/<int:item_id>')
 def api_get_item(item_id: int) -> jsonify:
-    item = LibraryItem.query.get(item_id)
-    
+    item = LibraryItem.query.get(item_id) 
     if not item:
-        return jsonify({"ok": False, "error": "Item not found"}), 404
-    
-    item_type = ItemType.query.get(item.ItemType)
-    
+        return jsonify({"ok": False, "error": "Item not found"}), 404  
+    item_type = ItemType.query.get(item.ItemType)  
     item_data = {
         "ok": True,
         "ItemID": item.ItemID,
@@ -349,10 +355,11 @@ def check_fines():
     fines = float(patron.FeesOwed or 0)
     return jsonify({"ok": True, "patron_id": patron.PatronID, "fines_due": fines})
 
-#showing user info now on checkout panel after confirming the patron id
+
+#BERKER returns patron details by patron id
 @app.route('/api/patron/<int:patron_id>')
 def api_get_patron(patron_id: int) -> jsonify:
-    '''API endpoint that returns patron details by PatronID'''
+
     patron = Patron.query.get(patron_id)
     
     if not patron:
@@ -486,15 +493,15 @@ def checkin_item() -> jsonify:
 #---------------------------
 @app.route('/checkout', methods=['GET'])
 def checkout_form():
-    return render_template('checkout.html') # loading demo page for now
-
+    return render_template('checkout.html')
 
 @app.route('/checkout', methods=['POST'])
 def checkout_basic() -> jsonify:
     payload = request.get_json(silent=True) or request.form
     patron_id = int(payload.get('patron_id', -1))
-    item_ids = payload.get('item_ids', []) #accepts a lits of items
+    item_ids = payload.get('item_ids', [])  #BERKER: getting a list of items for the basket
 
+#BERKER: helps convert to list if it s a string
     if isinstance(item_ids, str):
         item_ids = [int(x.strip()) for x in item_ids.split(',') if x.strip().isdigit()]
 
@@ -506,18 +513,18 @@ def checkout_basic() -> jsonify:
     if membership_expired(patron):
         return jsonify({
             "ok": False,
-            "message": "RENEW MEMBERSHIP NOW!!",
+            "error": "RENEW MEMBERSHIP NOW!!",
             "expired_on": str(patron.AccountExpDate)
         })
     
-#BERKER: Checking if patron has feesc.
+#BERKER: checking if patron has fines
     if patron.FeesOwed and patron.FeesOwed > 0:
         return jsonify({
             "ok": False,
             "error": f"Patron has fine balance of ${float(patron.FeesOwed):.2f}. Please clear fines before checkout."
-    })
+        })
 
-    # making sure the basket not exceeding limti
+#Berker: checks if basket exceeds item limit (as in patron items + basket items)
     current_count = patron.ItemsCheckedOut or 0
     if current_count + len(item_ids) > MAX_ITEMS_PER_PATRON:
         return jsonify({
@@ -525,7 +532,7 @@ def checkout_basic() -> jsonify:
             "error": f"Cannot checkout {len(item_ids)} items. Patron has {current_count} items checked out. Limit is {MAX_ITEMS_PER_PATRON}."
         })
     
-
+#BERKER: validate all items before checking out any
     errors = []
     items_to_checkout = []
     
@@ -536,8 +543,7 @@ def checkout_basic() -> jsonify:
             errors.append(f"Item ID {item_id} not found")
             continue
 
-
-#BERKER: check if specific item already has active checkout
+#BERKER: Checks if specific item already has active checkout(to prevent duplicates)
         active_checkout = (
             Checkout.query
             .outerjoin(Return, Return.TransactionID == Checkout.TransactionID)
@@ -548,7 +554,7 @@ def checkout_basic() -> jsonify:
             .first()
         )
 
-    # If an active checkout exists item is already checked out
+#BERKER: If an active checkout exists, item is already checked out
         if active_checkout:
             errors.append(f"Item '{item.ItemTitle}' (ID {item_id}) is already checked out")
             continue
@@ -559,15 +565,18 @@ def checkout_basic() -> jsonify:
         
         items_to_checkout.append(item)
 
+#BERKER: will return home If there are any errors
     if errors:
         return jsonify({"ok": False, "error": " | ".join(errors)})
     
+    # All items are valid, proceed with checkout
     checked_out_list = []
 
     for item in items_to_checkout:
         rental_days = rental_days_for(item)
         due_date = date.today() + timedelta(days=rental_days)
         
+#BERKER for checkout records
         new_checkout = Checkout(
             PatronID=patron_id,
             ItemID=item.ItemID,
@@ -575,8 +584,10 @@ def checkout_basic() -> jsonify:
         )
         database.session.add(new_checkout)
         
+#BERKER: Updates item availability
         item.Availability = False
         
+#BERKER: Adds to response list
         checked_out_list.append({
             "ItemID": item.ItemID,
             "ItemTitle": item.ItemTitle,
@@ -584,6 +595,7 @@ def checkout_basic() -> jsonify:
             "DueDate": str(due_date)
         })
 
+#BERKER: Update patron s item count (outside the loop
     patron.ItemsCheckedOut = current_count + len(items_to_checkout)
     database.session.commit()
 
@@ -593,6 +605,7 @@ def checkout_basic() -> jsonify:
         "patron_id": patron_id,
         "items_checked_out": checked_out_list
     })
+
 
 @app.route('/api/items-to-reshelve', methods=['GET'])
 def get_items_to_reshelve():
@@ -674,6 +687,41 @@ def reshelve_form():
 @app.route('/dbinfo', methods=['GET'])
 def dbinfo():
     return jsonify({"db_uri":app.config['SQLALCHEMY_DATABASE_URI']})
+
+# Vew Patron information + Checkout activity
+# Jake Rouse + reused Berker's code
+# -----------------------------
+# @app.route('/api/view_patron/<int:patron_id>')
+# def View_patron_account(patron_id: int) -> jsonify:
+
+#     patron = Patron.query.get(patron_id)
+
+#     patron_checkouts = Checkout.query(Checkout.TransactionID, Checkout.ItemID, LibraryItem.ItemTitle, (calc_return_date(Checkout.CheckoutDate, ItemType.rentalLength)).label("Due Date")).join(LibraryItem, Checkout.ItemID == LibraryItem.ItemID).join(ItemType, LibraryItem.ItemType == ItemType.ItemID).filter_by(PatronID = patron_id).all()
+
+#     patron_checkouts_list = [
+#         {
+#             "TransactionID": checkout.TransactionID,
+#             "ItemID": checkout.ItemID,
+#             "ItemTitle" : checkout.ItemTitle
+#         }
+#         for checkout in patron_checkouts
+#     ]
+
+#     if not patron:
+#         return jsonify({"ok": False, "error": "Patron not found"}), 404
+    
+#     patron_data_and_checkouts = {
+#         "ok": True,
+#         "PatronID": patron.PatronID,
+#         "FirstName": patron.PatronFN,
+#         "LastName": patron.PatronLN,
+#         "AccountExpDate": str(patron.AccountExpDate),
+#         "FeesOwed": float(patron.FeesOwed or 0),
+#         "NumItemsCheckedOut": patron.ItemsCheckedOut or 0,
+#         "ItemsCheckedOut": patron_checkouts_list
+#     }
+    
+#     return jsonify(patron_data_and_checkouts)
 
 
 # --- Main execution block ---
