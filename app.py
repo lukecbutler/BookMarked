@@ -96,8 +96,8 @@ def rental_days_for(item: LibraryItem) -> int:
 #Jake Rouse: Cacluates the due date for a checkout transaction
 #Note: We need to change the rental length attribute for ItemType.
 
-#def calc_return_date(transaction: Checkout, transactionitem: LibraryItem) -> TEXT:
-#    return func.date(transaction.CheckoutDate, )
+#def calc_return_date(Checkoutdate: TEXT, rentalLength: TEXT) -> TEXT:
+#    return func.date(Checkoutdate, rentalLength)
 
 
 #### --- Routes --- ####
@@ -696,7 +696,7 @@ def dbinfo():
 
 #     patron = Patron.query.get(patron_id)
 
-#     patron_checkouts = Checkout.query(Checkout.TransactionID, Checkout.ItemID, LibraryItem.ItemTitle).join(LibraryItem, Checkout.ItemID == LibraryItem.ItemID).filter_by(PatronID = patron_id).all()
+#     patron_checkouts = Checkout.query(Checkout.TransactionID, Checkout.ItemID, LibraryItem.ItemTitle, (calc_return_date(Checkout.CheckoutDate, ItemType.rentalLength)).label("Due Date")).join(LibraryItem, Checkout.ItemID == LibraryItem.ItemID).join(ItemType, LibraryItem.ItemType == ItemType.ItemID).filter_by(PatronID = patron_id).all()
 
 #     patron_checkouts_list = [
 #         {
