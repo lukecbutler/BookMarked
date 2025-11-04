@@ -77,14 +77,7 @@ class Return(database.Model):
 #     days_since_account_created = (date.today() - patron.AccountCreatedDate).days
 #     return days_since_account_created >= 365
 
-#### --- Core Logic --- ####
-def membership_expired(patron: Patron) -> bool:
-    '''
-    This function checks if a patron's account is expired
-    Returns TRUE if expired
-    Returns FALSE if not expired
-    '''
-    return bool(patron and patron.AccountExpDate and patron.AccountExpDate < date.today())
+
 
 
 #BERKER: calculates the rental period for a library item
@@ -688,3 +681,5 @@ if __name__ == '__main__':
         database.create_all()
 
     app.run(debug=True, host='0.0.0.0', port=5001)
+
+#This is a test comment to see if messing with the same file causes merge conflicts
