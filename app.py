@@ -2,6 +2,7 @@ import os
 from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 from datetime import date,timedelta
+from sqlalchemy import func
 
 app = Flask(__name__)
 
@@ -91,6 +92,13 @@ def membership_expired(patron: Patron) -> bool:
 def rental_days_for(item: LibraryItem) -> int:
     item_type = ItemType.query.get(item.ItemType) if item else None
     return int(item_type.RentalLength) if (item_type and item_type.RentalLength) else 0
+
+#Jake Rouse: Cacluates the due date for a checkout transaction
+#Note: We need to change the rental length attribute for ItemType.
+
+#def calc_return_date(transaction: Checkout, transactionitem: LibraryItem) -> TEXT:
+#    return func.date(transaction.CheckoutDate, )
+
 
 #### --- Routes --- ####
 MAX_ITEMS_PER_PATRON = 20
@@ -679,6 +687,41 @@ def reshelve_form():
 @app.route('/dbinfo', methods=['GET'])
 def dbinfo():
     return jsonify({"db_uri":app.config['SQLALCHEMY_DATABASE_URI']})
+
+# Vew Patron information + Checkout activity
+# Jake Rouse + reused Berker's code
+# -----------------------------
+# @app.route('/api/view_patron/<int:patron_id>')
+# def View_patron_account(patron_id: int) -> jsonify:
+
+#     patron = Patron.query.get(patron_id)
+
+#     patron_checkouts = Checkout.query(Checkout.TransactionID, Checkout.ItemID, LibraryItem.ItemTitle).join(LibraryItem, Checkout.ItemID == LibraryItem.ItemID).filter_by(PatronID = patron_id).all()
+
+#     patron_checkouts_list = [
+#         {
+#             "TransactionID": checkout.TransactionID,
+#             "ItemID": checkout.ItemID,
+#             "ItemTitle" : checkout.ItemTitle
+#         }
+#         for checkout in patron_checkouts
+#     ]
+
+#     if not patron:
+#         return jsonify({"ok": False, "error": "Patron not found"}), 404
+    
+#     patron_data_and_checkouts = {
+#         "ok": True,
+#         "PatronID": patron.PatronID,
+#         "FirstName": patron.PatronFN,
+#         "LastName": patron.PatronLN,
+#         "AccountExpDate": str(patron.AccountExpDate),
+#         "FeesOwed": float(patron.FeesOwed or 0),
+#         "NumItemsCheckedOut": patron.ItemsCheckedOut or 0,
+#         "ItemsCheckedOut": patron_checkouts_list
+#     }
+    
+#     return jsonify(patron_data_and_checkouts)
 
 
 # --- Main execution block ---
