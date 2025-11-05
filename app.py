@@ -9,7 +9,7 @@ app = Flask(__name__)
 # Create db route
 db_dir = app.instance_path
 os.makedirs(db_dir, exist_ok=True)
-db_path = os.path.join(db_dir, 'sprint1db.db') 
+db_path = os.path.join(db_dir, 'sprint2db.db') 
 
 # Configure database
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{db_path}"
@@ -26,12 +26,14 @@ class LibraryBranch(database.Model):
     BranchID = database.Column(database.Integer, primary_key=True, autoincrement=True)
     BranchName = database.Column(database.String(50))
 
+#The rental length needs to be in format of "+7 days"
+
 class ItemType(database.Model):
     __tablename__ = 'ItemType'
 
     TypeID = database.Column(database.Integer, primary_key=True, autoincrement=True)
     TypeName = database.Column(database.String(30))
-    RentalLength = database.Column(database.Integer)
+    RentalLength = database.Column(database.String(50))
     PerDayFine = database.Column(database.Numeric(10, 2))
 
 class LibraryItem(database.Model):
@@ -54,6 +56,8 @@ class Patron(database.Model):
     AccountExpDate = database.Column(database.Date)
     FeesOwed = database.Column(database.Numeric(10, 2))
     ItemsCheckedOut = database.Column(database.Integer)
+
+#Checkout date needs to be in the format of "2025-11-04"
 
 class Checkout(database.Model):
     __tablename__ = 'Checkout'
@@ -94,10 +98,9 @@ def rental_days_for(item: LibraryItem) -> int:
     return int(item_type.RentalLength) if (item_type and item_type.RentalLength) else 0
 
 #Jake Rouse: Cacluates the due date for a checkout transaction
-#Note: We need to change the rental length attribute for ItemType.
 
-#def calc_return_date(Checkoutdate: TEXT, rentalLength: TEXT) -> TEXT:
-#    return func.date(Checkoutdate, rentalLength)
+def calc_return_date(Checkoutdate: str, rentalLength: str) -> str:
+    return func.date(Checkoutdate, rentalLength)
 
 
 #### --- Routes --- ####
@@ -691,37 +694,38 @@ def dbinfo():
 # Vew Patron information + Checkout activity
 # Jake Rouse + reused Berker's code
 # -----------------------------
-# @app.route('/api/view_patron/<int:patron_id>')
-# def View_patron_account(patron_id: int) -> jsonify:
+@app.route('/api/view_patron/<int:patron_id>')
+def View_patron_account(patron_id: int) -> jsonify:
 
-#     patron = Patron.query.get(patron_id)
+    patron = Patron.query.get(patron_id)
 
-#     patron_checkouts = Checkout.query(Checkout.TransactionID, Checkout.ItemID, LibraryItem.ItemTitle, (calc_return_date(Checkout.CheckoutDate, ItemType.rentalLength)).label("Due Date")).join(LibraryItem, Checkout.ItemID == LibraryItem.ItemID).join(ItemType, LibraryItem.ItemType == ItemType.ItemID).filter_by(PatronID = patron_id).all()
+    patron_checkouts = Checkout.query(Checkout.TransactionID, Checkout.ItemID, LibraryItem.ItemTitle, (calc_return_date(Checkout.CheckoutDate, ItemType.RentalLength)).label("Due Date")).join(LibraryItem, Checkout.ItemID == LibraryItem.ItemID).join(ItemType, LibraryItem.ItemType == ItemType.ItemID).filter_by(PatronID = patron_id).all()
 
-#     patron_checkouts_list = [
-#         {
-#             "TransactionID": checkout.TransactionID,
-#             "ItemID": checkout.ItemID,
-#             "ItemTitle" : checkout.ItemTitle
-#         }
-#         for checkout in patron_checkouts
-#     ]
+    patron_checkouts_list = [
+        {
+            "TransactionID": checkout.TransactionID,
+            "ItemID": checkout.ItemID,
+            "ItemTitle" : checkout.ItemTitle,
+            "Due Date" : calc_return_date(Checkout.CheckoutDate, ItemType.RentalLength)
+        }
+        for checkout in patron_checkouts
+    ]
 
-#     if not patron:
-#         return jsonify({"ok": False, "error": "Patron not found"}), 404
+    if not patron:
+        return jsonify({"ok": False, "error": "Patron not found"}), 404
     
-#     patron_data_and_checkouts = {
-#         "ok": True,
-#         "PatronID": patron.PatronID,
-#         "FirstName": patron.PatronFN,
-#         "LastName": patron.PatronLN,
-#         "AccountExpDate": str(patron.AccountExpDate),
-#         "FeesOwed": float(patron.FeesOwed or 0),
-#         "NumItemsCheckedOut": patron.ItemsCheckedOut or 0,
-#         "ItemsCheckedOut": patron_checkouts_list
-#     }
+    patron_data_and_checkouts = {
+        "ok": True,
+        "PatronID": patron.PatronID,
+        "FirstName": patron.PatronFN,
+        "LastName": patron.PatronLN,
+        "AccountExpDate": str(patron.AccountExpDate),
+        "FeesOwed": float(patron.FeesOwed or 0),
+        "NumItemsCheckedOut": patron.ItemsCheckedOut or 0,
+        "ItemsCheckedOut": patron_checkouts_list
+    }
     
-#     return jsonify(patron_data_and_checkouts)
+    return jsonify(patron_data_and_checkouts)
 
 
 # --- Main execution block ---
