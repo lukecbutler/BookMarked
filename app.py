@@ -727,6 +727,9 @@ def View_patron_account(patron_id: int) -> jsonify:
     
     return jsonify(patron_data_and_checkouts)
 
+@app.route('/search', methods=['GET'])
+def search():
+    return render_template('search.html')
 
 # --- Main execution block ---
 if __name__ == '__main__':
