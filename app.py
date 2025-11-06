@@ -610,7 +610,7 @@ def checkout_basic() -> jsonify:
         new_checkout = Checkout(
             PatronID=patron_id,
             ItemID=item.ItemID,
-            CheckoutDate=date,
+            CheckoutDate=checkout_date,
             DueDate=due_date
         )
         database.session.add(new_checkout)
