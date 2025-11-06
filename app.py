@@ -66,6 +66,7 @@ class Checkout(database.Model):
     PatronID = database.Column(database.Integer, database.ForeignKey('Patron.PatronID'))
     ItemID = database.Column(database.Integer, database.ForeignKey('LibraryItem.ItemID'))
     CheckoutDate = database.Column(database.Date)
+    DueDate = database.Column(database.Date) #BERKER: adding this for calculating fines
 
 class Return(database.Model):
     __tablename__ = 'Return'
@@ -102,6 +103,19 @@ def rental_days_for(item: LibraryItem) -> int:
 def calc_return_date(Checkoutdate: str, rentalLength: str) -> str:
     return func.date(Checkoutdate, rentalLength)
 
+#BERKER: calculating fines, 1 dollar for each day passed return date until it reaches the cpost of item.
+def calculate_fine(checkout: Checkout, item: LibraryItem, return_date: date) -> float:
+    if not checkout.DueDate or return_date <= checkout.DueDate:
+        return 0.0
+    item_type = ItemType.query.get(item.ItemType)
+    if not item_type or not item_type.PerDayFine:
+        return 0.0
+    days_overdue = (return_date - checkout.DueDate).days
+    per_day_fine = float(item_type.PerDayFine)
+    calculated_fine = days_overdue * per_day_fine
+    item_cost = float(item.Cost) if item.Cost else 0.0
+    final_fine = min(calculated_fine, item_cost)
+    return round(final_fine, 2)
 
 #### --- Routes --- ####
 MAX_ITEMS_PER_PATRON = 20
@@ -459,32 +473,43 @@ def checkin_item() -> jsonify:
             return jsonify({"ok": False, "error": "Internal Error: Item or Patron record missing"}), 500 
 
     try:
-        # 1. Create the Return record
-        new_return = Return(
-            TransactionID=active_checkout.TransactionID,
-            DateReturned=date.today(),
-            BranchReturnedTo=branch_id
-        )
-        database.session.add(new_return) # add new return entry to the db - by adding return the item's logical state is changed from 'CheckedOut' to 'CheckedIn'
+            return_date = date.today()
+            
+            fine_amount = calculate_fine(active_checkout, item, return_date)
+            
+            new_return = Return(
+                TransactionID=active_checkout.TransactionID,
+                DateReturned=return_date,
+                BranchReturnedTo=branch_id
+            )
+            database.session.add(new_return)
 
-        # item.Availability stays 'False'.
-        # To update Item Availability add to the 'Return' record, the item's state is now 'CheckIn'.
+            current_count = patron.ItemsCheckedOut or 0
+            if current_count > 0:
+                patron.ItemsCheckedOut = current_count - 1
 
-        # 3. Update Patron's item count - reduce it by 1
-        current_count = patron.ItemsCheckedOut or 0
-        if current_count > 0:
-            patron.ItemsCheckedOut = current_count - 1
+            if fine_amount > 0:
+                current_fees = float(patron.FeesOwed or 0)
+                patron.FeesOwed = current_fees + fine_amount
 
-        database.session.commit() # commit changes to the db
+            database.session.commit()
+            response_data = {
+                "ok": True,
+                "message": f"Item '{item.ItemTitle}' checked in successfully. Awaiting reshelving.",
+                "item_id": item.ItemID,
+                "patron_id": patron.PatronID,
+                "patron_name": f"{patron.PatronFN} {patron.PatronLN}",
+                "return_date": str(return_date)
+            }
+            
+            if fine_amount > 0:
+                days_overdue = (return_date - active_checkout.DueDate).days
+                response_data["fine_applied"] = fine_amount
+                response_data["days_overdue"] = days_overdue
+                response_data["due_date"] = str(active_checkout.DueDate)
+                response_data["message"] += f" Fine of ${fine_amount:.2f} applied for {days_overdue} day(s) overdue."
 
-        return jsonify({ # return messsage check in was successful
-            "ok": True,
-            "message": f"Item '{item.ItemTitle}' checked in successfully. Awaiting reshelving.",
-            "item_id": item.ItemID,
-            "patron_id": patron.PatronID,
-            "patron_name": f"{patron.PatronFN} {patron.PatronLN}",
-            "return_date": str(date.today())
-        })
+            return jsonify(response_data)
 
     except Exception as e:
         database.session.rollback()
@@ -580,10 +605,14 @@ def checkout_basic() -> jsonify:
         due_date = date.today() + timedelta(days=rental_days)
         
 #BERKER for checkout records
+        checkout_date = date.today()
+        due_date = checkout_date + timedelta(days=rental_days)
+
         new_checkout = Checkout(
             PatronID=patron_id,
             ItemID=item.ItemID,
-            CheckoutDate=date.today()
+            CheckoutDate=date,
+            DueDate=due_date
         )
         database.session.add(new_checkout)
         
