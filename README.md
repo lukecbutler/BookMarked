@@ -1,6 +1,6 @@
 # LINKS:
 Product Backlog:
-https://docs.google.com/spreadsheets/d/1PP7BaWFrvVPpQxypPUI-oNMLrsI0S1pPE7Cr69k_eeM/edit?gid=0#gid=0
+https://docs.google.com/document/d/1p8Fj4puO0XDcRLGtAaXUZkdOSJ06iokwc0s9O2n8AzE/edit?tab=t.0
 
 Trello:
 https://trello.com/b/2aiERKs0
