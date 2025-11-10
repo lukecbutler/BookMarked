@@ -9,7 +9,7 @@ app = Flask(__name__)
 # Create db route
 db_dir = app.instance_path
 os.makedirs(db_dir, exist_ok=True)
-db_path = os.path.join(db_dir, 'sprint2db.db') 
+db_path = os.path.join(db_dir, 'sprint1db.db') 
 
 # Configure database
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{db_path}"
@@ -611,7 +611,7 @@ def checkout_basic() -> jsonify:
         new_checkout = Checkout(
             PatronID=patron_id,
             ItemID=item.ItemID,
-            CheckoutDate=date,
+            CheckoutDate=date.today(),
             DueDate=due_date
         )
         database.session.add(new_checkout)
