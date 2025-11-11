@@ -187,7 +187,11 @@
 
       <!-- Basket -->
       <div class="basket">
-        <h5>Basket (<span id="basket-count">0</span> items)</h5>
+        <h5>
+          Basket (<span id="basket-count">0</span> items) &middot; 
+          <span id="remaining-slots">Remaining this checkout: 20</span>
+        </h5>
+
         <div id="basket-items"><em>Basket is empty</em></div>
         <div style="margin-top:10px;">
           <button type="button" id="confirm-btn" disabled>Confirm Checkout</button>
@@ -233,6 +237,29 @@
     let basket = [];
     let currentPatron = null;
     let itemLookupTimeout;
+      // NEW: enforce client-side limit too
+  const MAX_ITEMS_PER_PATRON = 20;
+
+  function remainingSlots() {
+    const already = Number(currentPatron?.items_checked_out || 0);
+    return Math.max(0, MAX_ITEMS_PER_PATRON - already - basket.length);
+  }
+
+  function updateAddControls() {
+    const addBtn = document.getElementById('add-btn');
+    const itemInput = document.getElementById('item_id');
+    const rem = remainingSlots();
+    const remEl = document.getElementById('remaining-slots');
+
+    if (remEl) remEl.textContent = `Remaining this checkout: ${rem}`;
+
+    const disable = rem <= 0;
+    if (addBtn) addBtn.disabled = disable;
+    if (itemInput) {
+      itemInput.disabled = disable;
+      itemInput.setAttribute('aria-disabled', String(disable));
+    }
+  }
 
     // Check patron info when button is clicked
     document.getElementById('check-patron-btn').addEventListener('click', async () => {
@@ -276,29 +303,35 @@
 
         // Display patron info
         displayPatronInfo(currentPatron);
-
-        // Check if patron can checkout
+        // Consolidated eligibility logic
         if (currentPatron.expired) {
           showMessage('Patron membership is EXPIRED. Please renew membership before checkout.', 'error');
           document.getElementById('item-section').classList.add('disabled-section');
+          updateAddControls();
           return;
         }
-
         if (currentPatron.fines_due > 0) {
           showMessage(`Patron has outstanding fines of $${currentPatron.fines_due.toFixed(2)}. Please clear fines before checkout.`, 'error');
           document.getElementById('item-section').classList.add('disabled-section');
+          updateAddControls();
           return;
         }
-
-        // Patron is good to go
-        showMessage('Patron is eligible for checkout!', 'success');
+        const rem = remainingSlots();
+        if (rem <= 0) {
+          showMessage('Patron has already reached the 20-item limit. Return/remove items before checking out.', 'error');
+          document.getElementById('item-section').classList.add('disabled-section');
+          updateAddControls();
+          return;
+        }
+        showMessage(`Patron is eligible for checkout — you can add up to ${rem} item(s) now.`, 'success');
         document.getElementById('item-section').classList.remove('disabled-section');
+        updateAddControls();
 
-      } catch (err) {
-        showMessage('Error checking patron information', 'error');
-        console.error(err);
-      }
-    });
+        } catch (err) {
+          showMessage('Error checking patron information', 'error');
+          console.error(err);
+        }
+      });
 
     // Display patron information
     function displayPatronInfo(patron) {
@@ -377,6 +410,11 @@
         showMessage('Please enter an Item ID', 'error');
         return;
       }
+      if (remainingSlots() <= 0) {
+        showMessage('Limit reached (20 items). Remove something from the basket first.', 'error');
+        updateAddControls();
+        return;
+      }
 
       // Check if already in basket
       if (basket.find(item => item.ItemID == itemId)) {
@@ -402,6 +440,7 @@
         // Add to basket
         basket.push(data);
         updateBasket();
+        updateAddControls();
         document.getElementById('item_id').value = '';
         document.getElementById('item-info').style.display = 'none';
         showMessage('Item added to basket', 'success');
@@ -415,6 +454,7 @@
     function removeFromBasket(itemId) {
       basket = basket.filter(item => item.ItemID != itemId);
       updateBasket();
+      updateAddControls();
       showMessage('Item removed from basket', 'success');
     }
 
@@ -683,5 +723,6 @@ document.getElementById('btn-go-home')?.addEventListener('click', () => {
   window.location.href = '/';
 });
   </script>
+  
 </body>
 </html>
