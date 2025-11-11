@@ -121,6 +121,19 @@
       input[type="number"]{ width:100%; max-width:260px; }
       .card.checkout-card{ padding:1rem; }
     }
+
+    .disabled-section {
+      pointer-events: none;
+      opacity: 0.5;
+      position: relative;
+    }
+
+    .disabled-section input,
+    .disabled-section button {
+      cursor: not-allowed;
+      background-color: #f5f5f5 !important;
+    }
+    
   </style>
 </head>
 <body>
@@ -263,6 +276,9 @@
 
     // Check patron info when button is clicked
     document.getElementById('check-patron-btn').addEventListener('click', async () => {
+      basket = [];  // BERKER:CLERs BASKET WHEN CHECKING NEW PATRON
+      updateBasket();
+      updateAddControls();
       const patronId = document.getElementById('patron_id').value.trim();
       
       if (!patronId) {
@@ -318,12 +334,12 @@
         }
         const rem = remainingSlots();
         if (rem <= 0) {
-          showMessage('Patron has already reached the 20-item limit. Return/remove items before checking out.', 'error');
+          showMessage('Patron has already reached the 20 item limit. Return/remove items before checking out.', 'error');
           document.getElementById('item-section').classList.add('disabled-section');
           updateAddControls();
           return;
         }
-        showMessage(`Patron is eligible for checkout — you can add up to ${rem} item(s) now.`, 'success');
+        showMessage(`Patron is eligible for checkout, you can add up to ${rem} item(s) now.`, 'success');
         document.getElementById('item-section').classList.remove('disabled-section');
         updateAddControls();
 
@@ -377,22 +393,22 @@
         try {
           const resp = await fetch(`/api/item/${itemId}`);
           const data = await resp.json();
-          
           const infoDiv = document.getElementById('item-info');
-          const detailsSpan = document.getElementById('item-details');
           
           if (data.ok) {
-            detailsSpan.innerHTML = `
+            infoDiv.innerHTML = `
               <strong>${data.ItemTitle}</strong><br>
               Type: ${data.ItemType} | Available: ${data.Availability ? 'Yes' : 'No'} | Shelf: ${data.ShelfCode}
             `;
             infoDiv.style.display = 'block';
           } else {
-            detailsSpan.textContent = data.error || 'Item not found';
+            infoDiv.textContent = data.error || 'Item not found';  // ✅ FIXED: Changed detailsSpan to infoDiv
             infoDiv.style.display = 'block';
           }
         } catch (err) {
           console.error('Error fetching item:', err);
+          document.getElementById('item-info').textContent = 'Error loading item info';
+          document.getElementById('item-info').style.display = 'block';
         }
       }, 500);
     });
@@ -406,8 +422,8 @@
 
       const itemId = document.getElementById('item_id').value.trim();
       
-      if (!itemId) {
-        showMessage('Please enter an Item ID', 'error');
+      if (!itemId || parseInt(itemId) <= 0 || !Number.isInteger(parseFloat(itemId))) {
+        showMessage('Please enter a valid Item ID (positive integer)', 'error');
         return;
       }
       if (remainingSlots() <= 0) {
@@ -634,9 +650,20 @@ document.getElementById('btn-pay-fines')?.addEventListener('click', async () => 
       currentPatron.fines_due = 0;
       displayPatronInfo(currentPatron);
       
-      // Re-check eligibility
-      showMessage('Fines cleared! Patron is now eligible for checkout.', 'success');
-      document.getElementById('item-section').classList.remove('disabled-section');
+      // Berker detailed Re-check eligibility
+      if (currentPatron.expired) {
+        showMessage('Fines paid! But membership is still expired. Please extend membership.', 'error');
+        document.getElementById('item-section').classList.add('disabled-section');
+        updateAddControls();
+      } else if (remainingSlots() <= 0) {
+        showMessage('Fines paid! But patron has reached the 20-item limit.', 'error');
+        document.getElementById('item-section').classList.add('disabled-section');
+        updateAddControls();
+      } else {
+        showMessage('Fines cleared! Patron is now eligible for checkout.', 'success');
+        document.getElementById('item-section').classList.remove('disabled-section');
+        updateAddControls();
+  }
       
     } else {
       result.textContent = data.error || 'Payment failed';
@@ -694,9 +721,18 @@ const resp = await fetch('/api/extend_membership', {
 
       displayPatronInfo(currentPatron);
 
-      if (currentPatron.fines_due === 0) {
+      if (currentPatron.fines_due > 0) {
+        showMessage('Membership extended! But patron still has outstanding fines. Please pay fines.', 'error');
+        document.getElementById('item-section').classList.add('disabled-section');
+        updateAddControls();
+      } else if (remainingSlots() <= 0) {
+        showMessage('Membership extended! But patron has reached the 20-item limit.', 'error');
+        document.getElementById('item-section').classList.add('disabled-section');
+        updateAddControls();
+      } else {
         showMessage('Membership extended! Patron is now eligible for checkout.', 'success');
         document.getElementById('item-section').classList.remove('disabled-section');
+        updateAddControls();
       }
 
       resultEl.textContent = `✓ Extended to ${currentPatron.expiration_date}`;

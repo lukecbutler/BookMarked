@@ -629,14 +629,19 @@ def checkout_basic() -> jsonify:
 
 #BERKER: Update patron s item count (outside the loop
     patron.ItemsCheckedOut = current_count + len(items_to_checkout)
-    database.session.commit()
-
-    return jsonify({
-        "ok": True,
-        "message": f"Successfully checked out {len(items_to_checkout)} item(s).",
-        "patron_id": patron_id,
-        "items_checked_out": checked_out_list
-    })
+    try:
+        database.session.commit()
+        
+        return jsonify({
+            "ok": True,
+            "message": f"Successfully checked out {len(items_to_checkout)} item(s).",
+            "patron_id": patron_id,
+            "items_checked_out": checked_out_list
+        })
+    except Exception as e:
+        database.session.rollback()
+        app.logger.error(f"Error during checkout commit: {e}")
+        return jsonify({"ok": False, "error": "Database error during checkout. Please try again."}), 500
 
 
 @app.route('/api/items-to-reshelve', methods=['GET'])
@@ -728,7 +733,17 @@ def View_patron_account(patron_id: int) -> jsonify:
 
     patron = Patron.query.get(patron_id)
 
-    patron_checkouts = Checkout.query(Checkout.TransactionID, Checkout.ItemID, LibraryItem.ItemTitle, (calc_return_date(Checkout.CheckoutDate, ItemType.RentalLength)).label("Due Date")).join(LibraryItem, Checkout.ItemID == LibraryItem.ItemID).join(ItemType, LibraryItem.ItemType == ItemType.ItemID).filter_by(PatronID = patron_id).all()
+    patron_checkouts = database.session.query(
+        Checkout.TransactionID, 
+        Checkout.ItemID, 
+        LibraryItem.ItemTitle, 
+        Checkout.DueDate #using duedate intead of calculating now
+    ).join(LibraryItem, Checkout.ItemID == LibraryItem.ItemID
+    ).join(ItemType, LibraryItem.ItemType == ItemType.TypeID  # ✅ FIXED
+    ).filter(Checkout.PatronID == patron_id
+    ).outerjoin(Return, Return.TransactionID == Checkout.TransactionID
+    ).filter(Return.TransactionID.is_(None)  # Only active checkouts
+    ).all()
 
     patron_checkouts_list = [
         {
