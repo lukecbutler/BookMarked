@@ -169,8 +169,8 @@ def api_items_by_type() -> jsonify:
     query = LibraryItem.query
     if type_id_from_url.isdigit(): 
         query = query.filter(LibraryItem.ItemType == int(type_id_from_url))
-#BERKER: filtering unavailable items from dropdown, will remove after changing dropdown structure.
-    query = query.filter(LibraryItem.Availability == True)
+    #BERKER: filtering unavailable items from dropdown, will remove after changing dropdown structure.
+    #query = query.filter(LibraryItem.Availability == True)
     items_from_db = query.order_by(LibraryItem.ItemTitle).all()
 
     output_list = []
