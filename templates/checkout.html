@@ -715,33 +715,42 @@ const resp = await fetch('/api/extend_membership', {
     const data = await resp.json();
 
     if (data.ok) {
-      const newExp = data.new_expiration || data.expiration_date;
-      currentPatron.expired = false;
-      if (newExp) currentPatron.expiration_date = newExp;
-
-      displayPatronInfo(currentPatron);
-
-      if (currentPatron.fines_due > 0) {
-        showMessage('Membership extended! But patron still has outstanding fines. Please pay fines.', 'error');
-        document.getElementById('item-section').classList.add('disabled-section');
-        updateAddControls();
-      } else if (remainingSlots() <= 0) {
-        showMessage('Membership extended! But patron has reached the 20-item limit.', 'error');
-        document.getElementById('item-section').classList.add('disabled-section');
-        updateAddControls();
-      } else {
-        showMessage('Membership extended! Patron is now eligible for checkout.', 'success');
-        document.getElementById('item-section').classList.remove('disabled-section');
-        updateAddControls();
+      const newExp = data.expiration_date || data.new_expiration;
+      if (typeof data.expired === "boolean") {
+        currentPatron.expired = data.expired;
       }
-
-      resultEl.textContent = `✓ Extended to ${currentPatron.expiration_date}`;
-      resultEl.style.color = '#2e7d32';
-    } else {
-      resultEl.textContent = data.error || 'Failed to extend';
-      resultEl.style.color = '#d32f2f';
-    }
-  } catch (err) {
+      if (newExp) {
+        currentPatron.expiration_date = newExp; // always ISO YYYY-MM-DD from API
+        }
+        displayPatronInfo(currentPatron);
+        if (currentPatron.expired) {
+          showMessage('Membership date updated but it is still expired. Please pick a future date.', 'error');
+          document.getElementById('item-section').classList.add('disabled-section');
+          updateAddControls();
+        } 
+        else if (currentPatron.fines_due > 0) {
+          showMessage('Membership extended! Patron still has outstanding fines. Please pay fines.', 'error');
+          document.getElementById('item-section').classList.add('disabled-section');
+          updateAddControls();
+        } 
+        else if (remainingSlots() <= 0) {
+          showMessage('Membership extended! But patron has reached the 20-item limit.', 'error');
+          document.getElementById('item-section').classList.add('disabled-section');
+          updateAddControls();
+        } 
+        else {
+          showMessage('Membership extended! Patron is now eligible for checkout.', 'success');
+          document.getElementById('item-section').classList.remove('disabled-section');
+          updateAddControls();
+        }
+        resultEl.textContent = `✓ Extended to ${currentPatron.expiration_date}`;
+        resultEl.style.color = '#2e7d32';
+      } 
+      else {
+        resultEl.textContent = data.error || 'Failed to extend';
+        resultEl.style.color = '#d32f2f';
+      }
+} catch (err) {
     console.error(err);
     resultEl.textContent = 'Network error';
     resultEl.style.color = '#d32f2f';

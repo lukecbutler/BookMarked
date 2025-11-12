@@ -1,7 +1,7 @@
 import os
 from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
-from datetime import date,timedelta
+from datetime import datetime,date,timedelta
 from sqlalchemy import func
 
 app = Flask(__name__)
@@ -321,45 +321,75 @@ def check_membership():
     })
 
 
+def _parse_date_any(s: str):
+    """Accept YYYY-MM-DD (input[type=date]) or MM/DD/YYYY."""
+    s = (s or "").strip()
+    if not s:
+        return None
+    for fmt in ("%Y-%m-%d", "%m/%d/%Y"):
+        try:
+            return datetime.strptime(s, fmt).date()
+        except ValueError:
+            continue
+    return None
+
 @app.route('/api/extend_membership', methods=['POST'])
 def extend_membership():
-    """Extend or set a patron's membership expiration."""
+    """
+    Extend/set a patron's membership expiration.
+    Accepts EITHER:
+      - expiration_date: 'YYYY-MM-DD' (preferred) or 'MM/DD/YYYY'
+      - days: integer offset > 0 from today
+    Enforces: new expiration MUST be strictly in the future (> today).
+    Returns: ok, patron_id, expiration_date (YYYY-MM-DD), expired flag
+    """
     payload = request.get_json(silent=True) or request.form
-    patron_id = int(payload.get("patron_id", -1))
+
+    # patron validation
+    try:
+        patron_id = int(payload.get("patron_id", -1))
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "error": "Invalid patron_id"}), 400
 
     patron = Patron.query.get(patron_id)
     if not patron:
         return jsonify({"ok": False, "error": "Patron not found"}), 404
 
-    # Option 1: client sent a specific date
-    exp_date_str = payload.get("expiration_date")
+    # desired expiration
+    new_date = None
+    exp_date_str = (payload.get("expiration_date") or "").strip()
     if exp_date_str:
-      try:
-          # expected format: YYYY-MM-DD from <input type="date">
-          year, month, day = map(int, exp_date_str.split('-'))
-          patron.AccountExpDate = date(year, month, day)
-          database.session.commit()
-          return jsonify({
-              "ok": True,
-              "message": "Membership expiration updated.",
-              "new_expiration": str(patron.AccountExpDate)
-          })
-      except Exception:
-          return jsonify({"ok": False, "error": "Invalid expiration date format (expected YYYY-MM-DD)"}), 400
+        new_date = _parse_date_any(exp_date_str)
+        if not new_date:
+            return jsonify({"ok": False, "error": "Invalid expiration_date (use YYYY-MM-DD)"}), 400
+    else:
+        days_str = (payload.get("days") or "").strip()
+        if days_str:
+            try:
+                days = int(days_str)
+            except ValueError:
+                return jsonify({"ok": False, "error": "Invalid days value"}), 400
+            new_date = date.today() + timedelta(days=days)
 
-    # Option 2: fallback: extend by days (old behavior)
-    days = int(payload.get("days", 365))
-    current = patron.AccountExpDate
-    base_date = date.today() if (current is None or current < date.today()) else current
-    patron.AccountExpDate = base_date + timedelta(days=days)
+    if not new_date:
+        return jsonify({"ok": False, "error": "Provide expiration_date or days"}), 400
 
+    # must be FUTURE ONLY
+    if new_date <= date.today():
+        return jsonify({"ok": False, "error": "Expiration must be a future date"}), 400
+
+    patron.AccountExpDate = new_date
     database.session.commit()
+
+    expired_flag = bool(patron.AccountExpDate and patron.AccountExpDate < date.today())
 
     return jsonify({
         "ok": True,
-        "message": f"Membership extended by {days} days.",
-        "new_expiration": str(patron.AccountExpDate)
-    })
+        "patron_id": patron.PatronID,
+        "expiration_date": patron.AccountExpDate.strftime("%Y-%m-%d"),
+        "expired": expired_flag
+    }), 200
+
 
 # --- Fines API ---
 
