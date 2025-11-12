@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BookMarked · View Patrons</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    :root {
+      --brand-green: #1b5e20;
+      --brand-green-dark: #2e7d32;
+      --brand-green-light-bg: #f1f8e9;
+    }
+    body {
+      background: linear-gradient(135deg, rgba(232,245,233,0.5), rgba(200,230,201,0.5)),
+                  url('https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=1950&q=80');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      min-height: 100vh;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 2rem;
+    }
+    .header {
+      text-align: center;
+      margin-top: 1rem;
+      margin-bottom: 2rem;
+    }
+    .header h1 {
+      font-size: 3rem;
+      font-weight: 900;
+      color: var(--brand-green);
+    }
+    .header p {
+      color: #333;
+      font-size: 1rem;
+    }
+    .card.data-card {
+      background: rgba(255,255,255,0.95);
+      border-radius: 20px;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+      padding: 2rem;
+      width: 100%;
+      max-width: 800px; /* Wider for tables */
+      position: relative;
+      overflow: hidden;
+    }
+    .card.data-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: url('https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=800&q=80')
+                  center/cover no-repeat;
+      opacity: 0.15;
+      z-index: 0;
+    }
+    .card.data-card > * {
+      position: relative;
+      z-index: 1;
+    }
+    .card.data-card h2 {
+      color: var(--brand-green);
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 1.2rem;
+      text-align: center;
+    }
+    .table-responsive {
+        margin-top: 1rem;
+    }
+    .table th {
+        color: var(--brand-green);
+        background-color: var(--brand-green-light-bg);
+    }
+    footer {
+      margin-top: 1.25rem;
+      font-size: 0.9rem;
+      color: #666;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>📚 BookMarked</h1>
+    <p>WPL Library Software · View Patrons</p>
+  </div>
+
+  <div class="card data-card">
+    <h2>All Patrons</h2>
+
+    <div class="table-responsive">
+      <table class="table table-striped table-hover">
+        <thead>
+          <tr>
+            <th>Patron ID</th>
+            <th>First Name</th>
+            <th>Last Name</th>
+            <th>Fees Owed</th>
+          </tr>
+        </thead>
+        <tbody id="patrons-list-body">
+          </tbody>
+      </table>
+    </div>
+
+    <div style="text-align:center; margin-top:16px;">
+      <button 
+        type="button" 
+        onclick="window.location.href='/'"
+        style="background:#1565c0; color:#fff; border:none; padding:8px 16px; border-radius:8px; font-weight:600; cursor:pointer;">
+        ⬅️ Return to Main
+      </button>
+    </div>
+
+    <footer>
+      © 2025 BookMarked | All rights reserved
+    </footer>
+
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const patronsListBody = document.getElementById('patrons-list-body');
+      
+      async function fetchPatrons() {
+        patronsListBody.innerHTML = '<tr><td colspan="4" class="text-center">Loading...</td></tr>';
+        
+        try {
+          const response = await fetch('/patrons'); 
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const patrons = await response.json();
+
+          patronsListBody.innerHTML = ''; 
+          
+          if (patrons.length === 0) {
+            patronsListBody.innerHTML = '<tr><td colspan="4" class="text-center">No patrons found.</td></tr>';
+            return;
+          }
+
+          patrons.forEach(patron => {
+            const row = document.createElement('tr');
+            
+            // Format fees as currency
+            const fees = parseFloat(patron.Fees || 0).toFixed(2);
+            
+            row.innerHTML = `
+              <td>${patron.PatronID}</td>
+              <td>${patron.FName}</td>
+              <td>${patron.LName}</td>
+              <td>$${fees}</td>
+            `;
+            patronsListBody.appendChild(row);
+          });
+
+        } catch (error) {
+          console.error('Error fetching patrons:', error);
+          patronsListBody.innerHTML = '<tr><td colspan="4" class="text-center" style="color: red;">Could not load patrons.</td></tr>';
+        }
+      }
+
+      // Load data on page start
+      fetchPatrons();
+    });
+  </script>
+
+</body>
+</html>

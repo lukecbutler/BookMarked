@@ -771,6 +771,15 @@ def View_patron_account(patron_id: int) -> jsonify:
     
     return jsonify(patron_data_and_checkouts)
 
+@app.route('/view-patrons')
+def view_patrons_page():
+    '''Serves the HTML page to view all patrons.'''
+    return render_template('view_patrons.html')
+
+@app.route('/view-items')
+def view_items_page():
+    '''Serves the HTML page to view all available items.'''
+    return render_template('view_items.html')
 
 # --- Main execution block ---
 if __name__ == '__main__':
