@@ -647,25 +647,33 @@ def checkout_basic() -> jsonify:
 @app.route('/api/items-to-reshelve', methods=['GET'])
 def get_items_to_reshelve():
     '''
-    Identifies and returns a list of all items that have been returned, 
-    but not yet marked as available
+    Identifies and returns a list of all items that have been returned,
+    but not yet marked as available (awaiting reshelving).
     '''
     try:
-    # This query finds items that are 
-    # 1. In library item table
-    # 2. Marked as unavailable (Availability == False)
-    # 3. Have a corresponding return record
+        # 1) Latest checkout per item
+        latest_checkout_sq = (
+            database.session.query(
+                Checkout.ItemID,
+                func.max(Checkout.TransactionID).label("LatestTxn")
+            )
+            .group_by(Checkout.ItemID)
+        ).subquery()
+
+        # 2) Items whose latest checkout HAS a Return and item is still unavailable
         items_awaiting_reshelve = (
             database.session.query(LibraryItem)
-            .join(Checkout, LibraryItem.ItemID == Checkout.ItemID)
-            .join(Return, Checkout.TransactionID == Return.TransactionID)
-            .filter(LibraryItem.Availability == False)
-            .distinct(LibraryItem.ItemID)
+            .join(latest_checkout_sq, latest_checkout_sq.c.ItemID == LibraryItem.ItemID)
+            .join(Checkout, Checkout.TransactionID == latest_checkout_sq.c.LatestTxn)
+            .outerjoin(Return, Return.TransactionID == Checkout.TransactionID)
+            .filter(
+                LibraryItem.Availability == False,
+                Return.TransactionID.isnot(None)   # only if LATEST checkout was returned
+            )
             .order_by(LibraryItem.ItemTitle)
-            .all()         # Item is not yet available
+            .all()
         )
 
-        #format list for front end
         output_list = [
             {
                 "ItemID": item.ItemID,
@@ -674,9 +682,8 @@ def get_items_to_reshelve():
             }
             for item in items_awaiting_reshelve
         ]
-        
         return jsonify(output_list)
-    
+
     except Exception as e:
         return jsonify({"ok": False, "error": f"Database error: {str(e)}"}), 500
     
@@ -694,6 +701,9 @@ def reshelve_items():
     
     # Use database.session.get() which is the modern way
     item = database.session.get(LibraryItem, item_id)
+    if item.Availability:
+        return jsonify({"ok": False, "error": "Item already reshelved"}), 400
+
 
     if item is None:
         return jsonify({"ok": False, "error": f"Item with ID {item_id} not found"}), 404
