@@ -2,14 +2,14 @@ import os
 from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime,date,timedelta
-from sqlalchemy import func
+from sqlalchemy import func, CheckConstraint
 
 app = Flask(__name__)
 
 # Create db route
 db_dir = app.instance_path
 os.makedirs(db_dir, exist_ok=True)
-db_path = os.path.join(db_dir, 'sprint1db.db') 
+db_path = os.path.join(db_dir, 'sprint3db.db') 
 
 # Configure database
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{db_path}"
@@ -33,8 +33,12 @@ class ItemType(database.Model):
 
     TypeID = database.Column(database.Integer, primary_key=True, autoincrement=True)
     TypeName = database.Column(database.String(30))
-    RentalLength = database.Column(database.String(50))
+    RentalLength = database.Column(database.Integer)
     PerDayFine = database.Column(database.Numeric(10, 2))
+
+#Valid values for Status include:
+#available, checked in, checked out, reserved, renewed once, renewed twice
+#Note: spelling and capitaliztion must be as specified.
 
 class LibraryItem(database.Model):
     __tablename__ = 'LibraryItem'
@@ -44,8 +48,10 @@ class LibraryItem(database.Model):
     AquisitionDate = database.Column(database.Date)
     Cost = database.Column(database.Numeric(10, 2))
     ItemTitle = database.Column(database.String(50))
-    Availability = database.Column(database.Boolean)
+    Status = database.Column(database.String(20))
     ShelfCode = database.Column(database.String(5))
+
+    __table_args__ = (CheckConstraint("Status IN ('available', 'checked in', 'checked out', 'reserved', 'renewed once', 'renewed twice')", name = "valid_status"),)
 
 class Patron(database.Model):
     __tablename__ = 'Patron'
@@ -74,6 +80,15 @@ class Return(database.Model):
     TransactionID = database.Column(database.Integer, database.ForeignKey('Checkout.TransactionID'), primary_key=True)
     DateReturned = database.Column(database.Date)
     BranchReturnedTo = database.Column(database.Integer, database.ForeignKey('LibraryBranch.BranchID'))
+
+class Reservation(database.Model):
+    __tablename__ = 'Reservation'
+
+    ReservationID = database.Column(database.Integer, primary_key = True)
+    ReservingPatron = database.Column(database.Integer, database.ForeignKey('Patron.PatronID'))
+    ReservedItem = database.Column(database.Integer, database.ForeignKey('LibraryItem.ItemID'))
+    DateReserved = database.Column(database.Date)
+    Active = database.Column(database.Boolean)
 
 
 # should we have account expiration date or calculate expiration on account creation dates?? - we can check the account expiration date in the patron table. That's how I populated the db. Your function below looks good. Also berker this is fire nice fing job. ~ Luke
@@ -195,7 +210,9 @@ def api_patrons_with_checkouts() -> jsonify:
         .join(LibraryItem, Checkout.ItemID == LibraryItem.ItemID)
         .outerjoin(Return, Checkout.TransactionID == Return.TransactionID)
         .filter(
-            LibraryItem.Availability == False, # Item is not on shelf
+
+            #DBU
+            LibraryItem.Status == "checked out", # Item is not on shelf
             Return.TransactionID.is_(None)     # and item is not yet returned
         )
         .distinct(Patron.PatronID) 
@@ -223,7 +240,9 @@ def api_checked_out_items() -> jsonify:
         .join(Checkout, LibraryItem.ItemID == Checkout.ItemID)
         .outerjoin(Return, Checkout.TransactionID == Return.TransactionID)
         .filter(
-            LibraryItem.Availability == False, # Item is not on shelf
+
+            #DBU
+            LibraryItem.Status == "checked out", # Item is not on shelf
             Return.TransactionID.is_(None)     # AND not yet returned - this results in checked out state
         )
     )
@@ -261,7 +280,9 @@ def api_get_item(item_id: int) -> jsonify:
         "ItemID": item.ItemID,
         "ItemTitle": item.ItemTitle,
         "ItemType": item_type.TypeName if item_type else "Unknown",
-        "Availability": item.Availability,
+
+        #DBU
+        "Status": item.Status,
         "ShelfCode": item.ShelfCode
     }
     
@@ -287,7 +308,9 @@ def api_items_for_patron() -> jsonify:
         .outerjoin(Return, Checkout.TransactionID == Return.TransactionID)
         .filter(
             Checkout.PatronID == patron_id,
-            LibraryItem.Availability == False, # Item is not on shelf
+
+            #DBU
+            LibraryItem.Status == "checked out", # Item is not on shelf
             Return.TransactionID.is_(None)     # AND not yet returned
         )
         .order_by(LibraryItem.ItemTitle)
@@ -491,7 +514,9 @@ def checkin_item() -> jsonify:
     # shouldn't need this but it's a double check on the js
     if not active_checkout: # If no active checkout is found, it's either already 'Available' or 'CheckedIn'
         item_check = LibraryItem.query.get(item_id)
-        if item_check and item_check.Availability:
+
+        #DBU
+        if item_check and item_check.Status == "available":
                 return jsonify({"ok": False, "error": "This item is still Available."}), 400
         else:
                 return jsonify({"ok": False, "error": "This item is already 'CheckedIn' and awaiting reshelving"}), 400
@@ -503,6 +528,10 @@ def checkin_item() -> jsonify:
             return jsonify({"ok": False, "error": "Internal Error: Item or Patron record missing"}), 500 
 
     try:
+            
+            #Switches status of item from checked out to checked in
+            item.Status = 'checked in'
+
             return_date = date.today()
             
             fine_amount = calculate_fine(active_checkout, item, return_date)
@@ -617,7 +646,8 @@ def checkout_basic() -> jsonify:
             errors.append(f"Item '{item.ItemTitle}' (ID {item_id}) is already checked out")
             continue
 
-        if item.Availability is not True:
+        #DBU
+        if item.Status != 'available':
             errors.append(f"Item '{item.ItemTitle}' (ID {item_id}) is not available")
             continue
         
@@ -647,7 +677,8 @@ def checkout_basic() -> jsonify:
         database.session.add(new_checkout)
         
 #BERKER: Updates item availability
-        item.Availability = False
+        #DBU
+        item.Status = 'checked out'
         
 #BERKER: Adds to response list
         checked_out_list.append({
@@ -697,7 +728,9 @@ def get_items_to_reshelve():
             .join(Checkout, Checkout.TransactionID == latest_checkout_sq.c.LatestTxn)
             .outerjoin(Return, Return.TransactionID == Checkout.TransactionID)
             .filter(
-                LibraryItem.Availability == False,
+
+                #DBU
+                LibraryItem.Status == 'checked in',
                 Return.TransactionID.isnot(None)   # only if LATEST checkout was returned
             )
             .order_by(LibraryItem.ItemTitle)
@@ -731,7 +764,9 @@ def reshelve_items():
     
     # Use database.session.get() which is the modern way
     item = database.session.get(LibraryItem, item_id)
-    if item.Availability:
+
+    #DBU
+    if item.Status == "available":
         return jsonify({"ok": False, "error": "Item already reshelved"}), 400
 
 
@@ -740,7 +775,9 @@ def reshelve_items():
     
     #update items vailability and reshelve date
     try:
-        item.Availability = True
+
+        #DBU
+        item.Status = "available"
         item.DateReshelved = date.today()
         database.session.commit()
 
