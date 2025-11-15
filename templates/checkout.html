@@ -398,7 +398,7 @@
           if (data.ok) {
             infoDiv.innerHTML = `
               <strong>${data.ItemTitle}</strong><br>
-              Type: ${data.ItemType} | Available: ${data.Availability ? 'Yes' : 'No'} | Shelf: ${data.ShelfCode}
+              Type: ${data.ItemType} | Available: ${data.Status == 'available' ? 'Yes' : 'No'} | Shelf: ${data.ShelfCode}
             `;
             infoDiv.style.display = 'block';
           } else {
@@ -448,7 +448,8 @@
           return;
         }
 
-        if (!data.Availability) {
+        //DBU
+        if (data.Status != "available") {
           showMessage('Item is not available for checkout', 'error');
           return;
         }
