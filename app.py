@@ -478,8 +478,6 @@ def pay_fines():
 def reserve_form():
     return render_template('reserve.html')
 
-# --- Reservation API ---
-
 @app.route('/api/reserve', methods=['POST'])
 def reserve_item():
     payload = request.get_json(silent=True) or request.form
@@ -497,6 +495,17 @@ def reserve_item():
     item = LibraryItem.query.get(item_id)
     if not item:
         return jsonify({"ok": False, "error": "Item not found"}), 404
+    
+    existing_reservation = Reservation.query.filter_by(
+        ReservedItem=item_id,
+        Active=True
+    ).first()
+    
+    if existing_reservation:
+        return jsonify({
+            "ok": False, 
+            "error": "Item is already reserved"
+        }), 400
     
     new_reservation = Reservation(
         ReservingPatron=patron_id,
@@ -516,6 +525,40 @@ def reserve_item():
         "reservation_id": new_reservation.ReservationID,
         "patron_id": patron_id,
         "item_id": item_id
+    })
+
+@app.route('/api/cancel_reservation', methods=['POST'])
+def cancel_reservation():
+    '''Cancel a reservation'''
+    payload = request.get_json(silent=True) or request.form
+    
+    try:
+        reservation_id = int(payload.get("reservation_id", -1))
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "error": "Wrong reservation_id"}), 400
+    
+    reservation = Reservation.query.get(reservation_id)
+    
+    if not reservation:
+        return jsonify({"ok": False, "error": "Reservation not found"}), 404
+    
+    if not reservation.Active:
+        return jsonify({"ok": False, "error": "Reservation is already cancelled"}), 400
+    
+    # mark active
+    reservation.Active = False
+    
+    # updats back to avaialble
+    item = LibraryItem.query.get(reservation.ReservedItem)
+    if item and item.Status == 'reserved':
+        item.Status = 'available'
+    
+    database.session.commit()
+    
+    return jsonify({
+        "ok": True,
+        "message": "Reservation cancelled successfully",
+        "reservation_id": reservation_id
     })
 
 
