@@ -482,14 +482,13 @@ def reserve_form():
 
 @app.route('/api/reserve', methods=['POST'])
 def reserve_item():
-    '''Reserve an item for a patron'''
     payload = request.get_json(silent=True) or request.form
     
     try:
         patron_id = int(payload.get("patron_id", -1))
         item_id = int(payload.get("item_id", -1))
     except (TypeError, ValueError):
-        return jsonify({"ok": False, "error": "Invalid patron_id or item_id"}), 400
+        return jsonify({"ok": False, "error": "Invalid patronid or itemid"}), 400
     
     patron = Patron.query.get(patron_id)
     if not patron:
@@ -513,7 +512,7 @@ def reserve_item():
     
     return jsonify({
         "ok": True,
-        "message": f"Item '{item.ItemTitle}' reserved successfully for {patron.PatronFN} {patron.PatronLN}",
+        "message": f"Item '{item.ItemTitle}' reserved for {patron.PatronFN} {patron.PatronLN}",
         "reservation_id": new_reservation.ReservationID,
         "patron_id": patron_id,
         "item_id": item_id
