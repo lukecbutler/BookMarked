@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reserve Item - BookMarked</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .message {
+            padding: 10px;
+            margin-top: 20px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <h1>Reserve Item</h1>
+    
+    <div class="form-group">
+        <label>Patron ID:</label>
+        <input type="number" id="patron_id" placeholder="Enter Patron ID">
+    </div>
+    
+    <div class="form-group">
+        <label>Item ID:</label>
+        <input type="number" id="item_id" placeholder="Enter Item ID">
+    </div>
+    
+    <button onclick="reserveItem()">Reserve Item</button>
+    
+    <div id="message"></div>
+
+    <script>
+        function showMessage(message, isSuccess) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.className = 'message ' + (isSuccess ? 'success' : 'error');
+            messageDiv.textContent = message;
+        }
+
+        async function reserveItem() {
+            const patronId = document.getElementById('patron_id').value;
+            const itemId = document.getElementById('item_id').value;
+            
+            if (!patronId || !itemId) {
+                showMessage('Please enter both Patron ID and Item ID', false);
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/reserve', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        patron_id: parseInt(patronId),
+                        item_id: parseInt(itemId)
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.ok) {
+                    showMessage(data.message + ' (Reservation ID: ' + data.reservation_id + ')', true);
+                } else {
+                    showMessage('Error: ' + data.error, false);
+                }
+            } catch (error) {
+                showMessage('Error: ' + error.message, false);
+            }
+        }
+    </script>
+</body>
+</html>

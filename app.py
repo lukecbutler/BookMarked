@@ -473,6 +473,53 @@ def pay_fines():
     })
 
 
+# --- Reservation API ---
+@app.route('/reserve', methods=['GET'])
+def reserve_form():
+    return render_template('reserve.html')
+
+# --- Reservation API ---
+
+@app.route('/api/reserve', methods=['POST'])
+def reserve_item():
+    '''Reserve an item for a patron'''
+    payload = request.get_json(silent=True) or request.form
+    
+    try:
+        patron_id = int(payload.get("patron_id", -1))
+        item_id = int(payload.get("item_id", -1))
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "error": "Invalid patron_id or item_id"}), 400
+    
+    patron = Patron.query.get(patron_id)
+    if not patron:
+        return jsonify({"ok": False, "error": "Patron not found"}), 404
+    
+    item = LibraryItem.query.get(item_id)
+    if not item:
+        return jsonify({"ok": False, "error": "Item not found"}), 404
+    
+    new_reservation = Reservation(
+        ReservingPatron=patron_id,
+        ReservedItem=item_id,
+        DateReserved=date.today(),
+        Active=True
+    )
+    database.session.add(new_reservation)
+    
+    item.Status = 'reserved'
+    
+    database.session.commit()
+    
+    return jsonify({
+        "ok": True,
+        "message": f"Item '{item.ItemTitle}' reserved successfully for {patron.PatronFN} {patron.PatronLN}",
+        "reservation_id": new_reservation.ReservationID,
+        "patron_id": patron_id,
+        "item_id": item_id
+    })
+
+
 # Checkin demo
 #---------------------------
 @app.route('/checkin', methods=['GET'])
