@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BookMarked · Make Reservation</title>
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    :root {
+      --brand-green: #1b5e20;
+      --brand-green-light: #e8f5e9;
+      --brand-green-dark: #2e7d32;
+    }
+
+    body {
+      background: linear-gradient(135deg, rgba(232,245,233,0.4), rgba(200,230,201,0.4)),
+                  url('https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=1950&q=80');
+      background-size: cover;
+      background-attachment: fixed;
+      min-height: 100vh;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    .header h1 {
+      font-size: 2.4rem;
+      font-weight: 900;
+      color: var(--brand-green);
+    }
+
+    /* Cloud-like container */
+    .reservation-cloud {
+      background: rgba(255,255,255,0.95);
+      padding: 2rem;
+      width: 100%;
+      max-width: 600px;
+      border-radius: 35px;
+      border: 3px solid #b2dfdb;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+    }
+
+    .reservation-cloud h2 {
+      font-weight: 800;
+      color: var(--brand-green);
+      text-align: center;
+      margin-bottom: 1.5rem;
+      text-transform: uppercase;
+    }
+
+    label {
+      font-weight: 600;
+      color: var(--brand-green);
+    }
+
+    input {
+      background: #f1f8e9;
+      border-radius: 8px;
+      border: 1px solid #cfd8dc;
+      padding: 8px 10px;
+    }
+
+    #check-btn, #reserve-btn {
+      background: var(--brand-green-dark);
+      color: #fff;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    #reserve-btn {
+      margin-top: 1rem;
+      background: #1565c0;
+    }
+
+    .info-box {
+      background: #f8fdf6;
+      border: 2px dashed #a5d6a7;
+      border-radius: 12px;
+      padding: 1rem;
+      margin-top: 1rem;
+      display: none;
+    }
+
+    .info-box h5 {
+      font-weight: 700;
+      color: var(--brand-green-dark);
+      margin-bottom: 0.5rem;
+    }
+
+    .info-box p {
+      margin: 3px 0;
+      font-size: 0.95rem;
+    }
+
+    #message {
+      text-align: center;
+      margin-top: 10px;
+      min-height: 20px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="header">
+    <h1>📚 BookMarked</h1>
+    <p>WPL Library Software</p>
+  </div>
+
+  <div class="reservation-cloud">
+
+    <h2>Make Reservation</h2>
+
+    <!-- Patron ID -->
+    <div class="mb-3">
+      <label for="patronID">Patron ID</label>
+      <input id="patronID" class="form-control" type="number">
+    </div>
+
+    <!-- Item ID -->
+    <div class="mb-3">
+      <label for="itemID">Item ID</label>
+      <input id="itemID" class="form-control" type="number">
+    </div>
+
+    <!-- Check button -->
+    <button id="check-btn" onclick="checkReservation()">CHECK</button>
+
+    <div id="message"></div>
+
+    <!-- Info box revealed after checking -->
+    <div id="info-box" class="info-box">
+      <h5>Reservation Info</h5>
+      <p><strong>Book Title:</strong> <span id="info-title"></span></p>
+      <p><strong>Patron Name:</strong> <span id="info-patron"></span></p>
+      <p><strong>Status of Book:</strong> <span id="info-status"></span></p>
+      <p><strong>Current Due Date:</strong> <span id="info-due"></span></p>
+    </div>
+
+    <!-- Reserve button -->
+    <button id="reserve-btn" onclick="submitReservation()" style="display:none;">
+      RESERVE
+    </button>
+
+  </div>
+
+  <script>
+    // TEMP DUMMY DATA FOR TESTING
+    function checkReservation() {
+      const patronID = document.getElementById("patronID").value.trim();
+      const itemID = document.getElementById("itemID").value.trim();
+      const message = document.getElementById("message");
+
+      if (!patronID || !itemID) {
+        message.textContent = "Please enter both Patron ID and Item ID.";
+        message.style.color = "red";
+        return;
+      }
+
+      // Fake lookup response
+      document.getElementById("info-title").textContent = "The Great Gatsby";
+      document.getElementById("info-patron").textContent = "Alice Johnson";
+      document.getElementById("info-status").textContent = "Checked Out";
+      document.getElementById("info-due").textContent = "03/15/2025";
+
+      document.getElementById("info-box").style.display = "block";
+      document.getElementById("reserve-btn").style.display = "block";
+
+      message.textContent = "";
+    }
+
+    function submitReservation() {
+      alert("Reservation submitted! (placeholder)");
+    }
+  </script>
+
+</body>
+</html>

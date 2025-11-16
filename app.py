@@ -858,6 +858,11 @@ def view_items_page():
     '''Serves the HTML page to view all available items.'''
     return render_template('view_items.html')
 
+@app.route("/reservation")
+def reservations():
+    '''Serves the HTML page for managing reservations.'''
+    return render_template("reservation.html")
+
 # --- Main execution block ---
 if __name__ == '__main__':
 
