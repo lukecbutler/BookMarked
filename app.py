@@ -2,7 +2,7 @@ import os
 from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime,date,timedelta
-from sqlalchemy import func, CheckConstraint
+from sqlalchemy import func, CheckConstraint, or_
 
 app = Flask(__name__)
 
@@ -270,23 +270,55 @@ def api_branches():
 
 #BERKER: to get item details by ID (replaced dropdown approach)
 @app.route('/api/item/<int:item_id>')
-def api_get_item(item_id: int) -> jsonify:
+def api_get_item(item_id: int):
     item = LibraryItem.query.get(item_id) 
     if not item:
         return jsonify({"ok": False, "error": "Item not found"}), 404  
-    item_type = ItemType.query.get(item.ItemType)  
+
+    # Fetch item type
+    item_type = ItemType.query.get(item.ItemType)
+
+    # --- RESERVATION LOGIC ---
+    active_res = (
+    Reservation.query
+    .filter(
+        Reservation.ReservedItem == item_id,
+        or_(Reservation.Active == True, Reservation.Active.is_(None))
+        )
+    .first()
+    )
+
+
+    reservation_info = None
+    reserved = False
+
+    if active_res:
+        reserved = True
+        patron = Patron.query.get(active_res.ReservingPatron)
+        if patron:
+            reservation_info = {
+                "ReservedBy": patron.PatronID,
+                "ReservedByName": f"{patron.PatronFN} {patron.PatronLN}",
+                "DateReserved": str(active_res.DateReserved),
+                "ReservationID": active_res.ReservationID
+            }
+
+    # Build response
     item_data = {
         "ok": True,
         "ItemID": item.ItemID,
         "ItemTitle": item.ItemTitle,
         "ItemType": item_type.TypeName if item_type else "Unknown",
-
-        #DBU
         "Status": item.Status,
-        "ShelfCode": item.ShelfCode
+        "ShelfCode": item.ShelfCode,
+
+        # NEW fields:
+        "Reserved": reserved,
+        "ReservationInfo": reservation_info
     }
     
     return jsonify(item_data)
+
 
 
 @app.route('/api/items-for-patron')
@@ -674,9 +706,9 @@ def checkout_form():
 def checkout_basic() -> jsonify:
     payload = request.get_json(silent=True) or request.form
     patron_id = int(payload.get('patron_id', -1))
-    item_ids = payload.get('item_ids', [])  #BERKER: getting a list of items for the basket
+    item_ids = payload.get('item_ids', [])  # BERKER: getting a list of items for the basket
 
-#BERKER: helps convert to list if it s a string
+    # BERKER: helps convert to list if it's a string
     if isinstance(item_ids, str):
         item_ids = [int(x.strip()) for x in item_ids.split(',') if x.strip().isdigit()]
 
@@ -685,40 +717,45 @@ def checkout_basic() -> jsonify:
     if patron is None:
         return jsonify({"ok": False, "error": "Patron not found"})
 
+    # Membership check
     if membership_expired(patron):
         return jsonify({
             "ok": False,
             "error": "RENEW MEMBERSHIP NOW!!",
             "expired_on": str(patron.AccountExpDate)
         })
-    
-#BERKER: checking if patron has fines
+
+    # BERKER: checking if patron has fines
     if patron.FeesOwed and patron.FeesOwed > 0:
         return jsonify({
             "ok": False,
             "error": f"Patron has fine balance of ${float(patron.FeesOwed):.2f}. Please clear fines before checkout."
         })
 
-#Berker: checks if basket exceeds item limit (as in patron items + basket items)
+    # BERKER: checks if basket exceeds item limit (patron items + basket items)
     current_count = patron.ItemsCheckedOut or 0
     if current_count + len(item_ids) > MAX_ITEMS_PER_PATRON:
         return jsonify({
-            "ok": False, 
-            "error": f"Cannot checkout {len(item_ids)} items. Patron has {current_count} items checked out. Limit is {MAX_ITEMS_PER_PATRON}."
+            "ok": False,
+            "error": (
+                f"Cannot checkout {len(item_ids)} items. "
+                f"Patron has {current_count} items checked out. "
+                f"Limit is {MAX_ITEMS_PER_PATRON}."
+            )
         })
-    
-#BERKER: validate all items before checking out any
+
+    # BERKER: validate all items before checking out any
     errors = []
     items_to_checkout = []
-    
+
     for item_id in item_ids:
         item = LibraryItem.query.get(item_id)
-        
+
         if item is None:
             errors.append(f"Item ID {item_id} not found")
             continue
 
-#BERKER: Checks if specific item already has active checkout(to prevent duplicates)
+        # BERKER: Checks if specific item already has active checkout (to prevent duplicates)
         active_checkout = (
             Checkout.query
             .outerjoin(Return, Return.TransactionID == Checkout.TransactionID)
@@ -729,58 +766,84 @@ def checkout_basic() -> jsonify:
             .first()
         )
 
-#BERKER: If an active checkout exists, item is already checked out
+        # BERKER: If an active checkout exists, item is already checked out
         if active_checkout:
             errors.append(f"Item '{item.ItemTitle}' (ID {item_id}) is already checked out")
             continue
 
-        #DBU
-        if item.Status != 'available':
-            errors.append(f"Item '{item.ItemTitle}' (ID {item_id}) is not available")
-            continue
-        
+        # --- RESERVATION-AWARE AVAILABILITY CHECK ---
+        active_res = (
+            Reservation.query.filter(
+                Reservation.ReservedItem == item_id,
+                or_(Reservation.Active == True, Reservation.Active.is_(None)))
+                .first()
+                )
+
+
+        if active_res:
+            # Item is reserved by someone
+            if active_res.ReservingPatron != patron_id:
+                errors.append(
+                    f"Item '{item.ItemTitle}' (ID {item_id}) is reserved for another patron."
+                )
+                continue
+            # else: reserved for THIS patron → allow checkout (even if Status != 'available')
+        else:
+            # No reservation → normal availability rule
+            if item.Status != 'available':
+                errors.append(
+                    f"Item '{item.ItemTitle}' (ID {item_id}) is not available"
+                )
+                continue
+
         items_to_checkout.append(item)
 
-#BERKER: will return home If there are any errors
+    # If any errors, stop before making changes
     if errors:
         return jsonify({"ok": False, "error": " | ".join(errors)})
-    
+
     # All items are valid, proceed with checkout
     checked_out_list = []
 
     for item in items_to_checkout:
         rental_days = rental_days_for(item)
-        due_date = date.today() + timedelta(days=rental_days)
-        
-#BERKER for checkout records
         checkout_date = date.today()
         due_date = checkout_date + timedelta(days=rental_days)
 
+        # BERKER: checkout record with due date
         new_checkout = Checkout(
             PatronID=patron_id,
             ItemID=item.ItemID,
-            CheckoutDate=date.today(),
+            CheckoutDate=checkout_date,
             DueDate=due_date
         )
         database.session.add(new_checkout)
-        
-#BERKER: Updates item availability
-        #DBU
+
+        # --- CLOSE MATCHING RESERVATION FOR THIS PATRON/ITEM ---
+        active_res = Reservation.query.filter_by(
+            ReservedItem=item.ItemID,
+            ReservingPatron=patron_id,
+            Active=True
+        ).first()
+        if active_res:
+            active_res.Active = False
+
+        # BERKER / DBU: update item status
         item.Status = 'checked out'
-        
-#BERKER: Adds to response list
+
+        # BERKER: Adds to response list
         checked_out_list.append({
             "ItemID": item.ItemID,
             "ItemTitle": item.ItemTitle,
-            "CheckoutDate": str(date.today()),
+            "CheckoutDate": str(checkout_date),
             "DueDate": str(due_date)
         })
 
-#BERKER: Update patron s item count (outside the loop
+    # BERKER: Update patron's item count (outside the loop)
     patron.ItemsCheckedOut = current_count + len(items_to_checkout)
+
     try:
         database.session.commit()
-        
         return jsonify({
             "ok": True,
             "message": f"Successfully checked out {len(items_to_checkout)} item(s).",
@@ -790,7 +853,10 @@ def checkout_basic() -> jsonify:
     except Exception as e:
         database.session.rollback()
         app.logger.error(f"Error during checkout commit: {e}")
-        return jsonify({"ok": False, "error": "Database error during checkout. Please try again."}), 500
+        return jsonify({
+            "ok": False,
+            "error": "Database error during checkout. Please try again."
+        }), 500
 
 
 @app.route('/api/items-to-reshelve', methods=['GET'])

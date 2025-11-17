@@ -396,10 +396,13 @@
           const infoDiv = document.getElementById('item-info');
           
           if (data.ok) {
-            infoDiv.innerHTML = `
-              <strong>${data.ItemTitle}</strong><br>
-              Type: ${data.ItemType} | Available: ${data.Status == 'available' ? 'Yes' : 'No'} | Shelf: ${data.ShelfCode}
-            `;
+            let statusText = data.Status;
+            if (data.Reserved && data.ReservationInfo) {
+              statusText += ` (reserved for ${data.ReservationInfo.ReservedByName} #${data.ReservationInfo.ReservedBy})`;
+            }
+            infoDiv.innerHTML = `<strong>${data.ItemTitle}</strong><br>
+            Type: ${data.ItemType} | Status: ${statusText} | Shelf: ${data.ShelfCode}`;
+
             infoDiv.style.display = 'block';
           } else {
             infoDiv.textContent = data.error || 'Item not found';  // ✅ FIXED: Changed detailsSpan to infoDiv
@@ -414,58 +417,90 @@
     });
 
     // Add item to basket
-    document.getElementById('add-btn').addEventListener('click', async () => {
-      if (!currentPatron) {
-        showMessage('Please check patron information first', 'error');
+document.getElementById('add-btn').addEventListener('click', async () => {
+  if (!currentPatron) {
+    showMessage('Please check patron information first', 'error');
+    return;
+  }
+
+  const itemId = document.getElementById('item_id').value.trim();
+
+  if (!itemId || parseInt(itemId) <= 0 || !Number.isInteger(parseFloat(itemId))) {
+    showMessage('Please enter a valid Item ID (positive integer)', 'error');
+    return;
+  }
+
+  if (remainingSlots() <= 0) {
+    showMessage('Limit reached (20 items). Remove something from the basket first.', 'error');
+    updateAddControls();
+    return;
+  }
+
+  // Check if already in basket
+  if (basket.find(item => item.ItemID == itemId)) {
+    showMessage('Item already in basket', 'error');
+    return;
+  }
+
+  // Fetch item details
+  try {
+    const resp = await fetch(`/api/item/${itemId}`);
+    const data = await resp.json();
+
+    if (!data.ok) {
+      showMessage(data.error || 'Item not found', 'error');
+      return;
+    }
+
+    // --- RESERVATION-AWARE AVAILABILITY CHECK ---
+    let allowed = false;
+    // Case 1: There *is* an active reservation
+    if (data.Reserved && data.ReservationInfo) {
+      const reservedFor = String(data.ReservationInfo.ReservedBy);
+      const currentId   = String(currentPatron.patron_id);
+      if (reservedFor === currentId) {
+        allowed = true;
+      } else {
+        showMessage(
+          `Item is reserved for Patron #${data.ReservationInfo.ReservedBy} (${data.ReservationInfo.ReservedByName}).`,
+          'error'
+        );
         return;
       }
-
-      const itemId = document.getElementById('item_id').value.trim();
-      
-      if (!itemId || parseInt(itemId) <= 0 || !Number.isInteger(parseFloat(itemId))) {
-        showMessage('Please enter a valid Item ID (positive integer)', 'error');
+    }
+    // Case 2: No reservation → fall back to Status
+    else {
+      if (data.Status === "available") {
+        allowed = true;
+      } 
+      else if (data.Status === "checked out") {
+        showMessage('Item is already checked out.', 'error');
+        return;
+      } 
+      else if (data.Status === "reserved") {
+        // Reserved but backend didn't send ReservationInfo (edge case)
+        showMessage('Item is reserved and not available for checkout.', 'error');
+        return;
+      } 
+      else {
+        showMessage('Item is not available for checkout.', 'error');
         return;
       }
-      if (remainingSlots() <= 0) {
-        showMessage('Limit reached (20 items). Remove something from the basket first.', 'error');
-        updateAddControls();
-        return;
-      }
+    }
+    // If we get here, item is allowed in the basket
+    basket.push(data);
+    updateBasket();
+    updateAddControls();
+    document.getElementById('item_id').value = '';
+    document.getElementById('item-info').style.display = 'none';
+    showMessage('Item added to basket', 'success');
+  } 
+  catch (err) {
+    console.error('Error adding item:', err);
+    showMessage('Error adding item', 'error');
+  }
+});
 
-      // Check if already in basket
-      if (basket.find(item => item.ItemID == itemId)) {
-        showMessage('Item already in basket', 'error');
-        return;
-      }
-
-      // Fetch item details
-      try {
-        const resp = await fetch(`/api/item/${itemId}`);
-        const data = await resp.json();
-        
-        if (!data.ok) {
-          showMessage(data.error || 'Item not found', 'error');
-          return;
-        }
-
-        //DBU
-        if (data.Status != "available") {
-          showMessage('Item is not available for checkout', 'error');
-          return;
-        }
-
-        // Add to basket
-        basket.push(data);
-        updateBasket();
-        updateAddControls();
-        document.getElementById('item_id').value = '';
-        document.getElementById('item-info').style.display = 'none';
-        showMessage('Item added to basket', 'success');
-      } catch (err) {
-        showMessage('Error adding item', 'error');
-        console.error(err);
-      }
-    });
 
     // Remove item from basket
     function removeFromBasket(itemId) {
