@@ -472,6 +472,94 @@ def pay_fines():
         "patron_id": patron.PatronID
     })
 
+# --- Reservation API ---
+@app.route('/reserve', methods=['GET'])
+def reserve_form():
+    return render_template('reserve.html')
+
+@app.route('/api/reserve', methods=['POST'])
+def reserve_item():
+    payload = request.get_json(silent=True) or request.form
+    
+    try:
+        patron_id = int(payload.get("patron_id", -1))
+        item_id = int(payload.get("item_id", -1))
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "error": "Invalid patronid or itemid"}), 400
+    
+    patron = Patron.query.get(patron_id)
+    if not patron:
+        return jsonify({"ok": False, "error": "Patron not found"}), 404
+    
+    item = LibraryItem.query.get(item_id)
+    if not item:
+        return jsonify({"ok": False, "error": "Item not found"}), 404
+    
+    existing_reservation = Reservation.query.filter_by(
+        ReservedItem=item_id,
+        Active=True
+    ).first()
+    
+    if existing_reservation:
+        return jsonify({
+            "ok": False, 
+            "error": "Item is already reserved"
+        }), 400
+    
+    new_reservation = Reservation(
+        ReservingPatron=patron_id,
+        ReservedItem=item_id,
+        DateReserved=date.today(),
+        Active=True
+    )
+    database.session.add(new_reservation)
+    
+    item.Status = 'reserved'
+    
+    database.session.commit()
+    
+    return jsonify({
+        "ok": True,
+        "message": f"Item '{item.ItemTitle}' reserved for {patron.PatronFN} {patron.PatronLN}",
+        "reservation_id": new_reservation.ReservationID,
+        "patron_id": patron_id,
+        "item_id": item_id
+    })
+
+@app.route('/api/cancel_reservation', methods=['POST'])
+def cancel_reservation():
+    '''Cancel a reservation'''
+    payload = request.get_json(silent=True) or request.form
+    
+    try:
+        reservation_id = int(payload.get("reservation_id", -1))
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "error": "Wrong reservation_id"}), 400
+    
+    reservation = Reservation.query.get(reservation_id)
+    
+    if not reservation:
+        return jsonify({"ok": False, "error": "Reservation not found"}), 404
+    
+    if not reservation.Active:
+        return jsonify({"ok": False, "error": "Reservation is already cancelled"}), 400
+    
+    # mark active
+    reservation.Active = False
+    
+    # updats back to avaialble
+    item = LibraryItem.query.get(reservation.ReservedItem)
+    if item and item.Status == 'reserved':
+        item.Status = 'available'
+    
+    database.session.commit()
+    
+    return jsonify({
+        "ok": True,
+        "message": "Reservation cancelled successfully",
+        "reservation_id": reservation_id
+    })
+
 
 # Checkin demo
 #---------------------------
