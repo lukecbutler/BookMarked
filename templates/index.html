@@ -51,6 +51,44 @@
       margin-bottom: 0;
     }
 
+    .site-title {
+  font-size: 3.2rem;
+  font-weight: 900;
+
+  background: linear-gradient(90deg, #1b5e20, #66bb6a);
+  -webkit-background-clip: text; /* vendor prefix */
+  background-clip: text;         /* standard property */
+  -webkit-text-fill-color: transparent;
+
+  text-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+  letter-spacing: 1px;
+  margin-bottom: 0.25rem;
+  transition: all 0.3s ease;
+  cursor: default; /* keeps the mouse pointer visible */
+}
+
+.site-title:hover {
+  transform: scale(1.05) rotate(-1deg);
+}
+
+.site-subtitle {
+  font-size: 1.1rem;
+  color: #2e7d32;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  margin-bottom: 0;
+}
+
+ @media (max-width: 768px) {
+      .site-title { font-size: 2.6rem; }
+      .site-subtitle { font-size: 1rem; }
+    }
+
+    @media (max-width: 480px) {
+      .site-title { font-size: 2.1rem; }
+      .site-subtitle { font-size: 0.95rem; }
+    }
+
     .card.quicklinks-card {
       background: rgba(255,255,255,0.95);
       border: none;
@@ -128,8 +166,8 @@
 </head>
 <body>
   <div class="header" role="banner">
-    <h1>📚 BookMarked</h1>
-    <p>WPL Library Software</p>
+   <h1 class="site-title">📚 BookMarked</h1>
+   <p class="site-subtitle">WPL Library Software</p>
   </div>
 
   <main class="card quicklinks-card" role="main" aria-labelledby="ql-heading">
@@ -158,6 +196,10 @@
 
         <div class="list-group-item">
           <a href="/view-items">View All Library Items</a>
+          <span class="chev" aria-hidden="true">›</span>
+        </div>
+        <div class="list-group-item">
+          <a href="/reserve">Reserve an item</a>
           <span class="chev" aria-hidden="true">›</span>
         </div>
     </div>

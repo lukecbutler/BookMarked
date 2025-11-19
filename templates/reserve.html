@@ -1,165 +1,252 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reserve Item - BookMarked</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 600px;
-            margin: 50px auto;
-            padding: 20px;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        input {
-            width: 100%;
-            padding: 8px;
-            box-sizing: border-box;
-        }
-        button {
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            cursor: pointer;
-            margin-right: 10px;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        .cancel-btn {
-            background-color: #dc3545;
-        }
-        .cancel-btn:hover {
-            background-color: #c82333;
-        }
-        .message {
-            padding: 10px;
-            margin-top: 20px;
-            border-radius: 4px;
-        }
-        .success {
-            background-color: #d4edda;
-            color: #155724;
-        }
-        .error {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-        hr {
-            margin: 30px 0;
-            border: none;
-            border-top: 2px solid #ddd;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reserve Item · BookMarked</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+  /* Body styling */
+  body {
+    background: linear-gradient(135deg, rgba(232,245,233,0.5), rgba(200,230,201,0.5)),
+                url('https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=1950&q=80');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    min-height: 100vh;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    flex-direction: column;
+  }
+
+  /* Container for both cards */
+  .container-card {
+    display: flex;
+    flex-direction: row;
+    gap: 2rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    max-width: 1300px;
+    padding: 1rem;
+  }
+
+  /* Card styling */
+  .card.reserve-card {
+    background: rgba(255,255,255,0.95);
+    border-radius: 20px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    padding: 2rem;
+    width: 100%;
+    max-width: 600px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card.reserve-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: url('https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=800&q=80')
+                center/cover no-repeat;
+    opacity: 0.15;
+    z-index: 0;
+  }
+
+  .card.reserve-card > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Headings */
+  h1, h2 {
+    text-align: center;
+    color: #1b5e20;
+    font-weight: 700;
+  }
+
+  /* Form styling */
+  .form-label {
+    color: #1b5e20;
+    font-weight: 600;
+  }
+
+  .form-control {
+    background-color: #f1f8e9;
+    border-radius: 10px;
+    border: 1px solid #e0e0e0;
+  }
+  .form-control:focus {
+    border-color: #2e7d32;
+    box-shadow: 0 0 0 0.2rem rgba(46,125,50,0.15);
+    background-color: #fff;
+  }
+
+  /* Buttons */
+  .btn-success, .btn-primary, .btn-danger {
+    border-radius: 12px;
+    padding: 0.6rem;
+    font-weight: 600;
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+  .btn-success:hover { background-color: #1b5e20; }
+  .btn-primary:hover { background-color: #1565c0; }
+  .btn-danger:hover { background-color: #c82333; }
+
+  /* Message box */
+  #message {
+    margin-top: 20px;
+    min-height: 24px;
+    font-size: 0.95rem;
+    font-family: monospace;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 8px;
+    display: inline-block;
+    transition: all 0.3s ease;
+  }
+
+  #message.success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+  }
+
+  #message.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+  }
+
+  /* Footer */
+  footer {
+    margin-top: 1.25rem;
+    font-size: 0.9rem;
+    color: #666;
+    text-align: center;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .container-card {
+      flex-direction: column; /* stack vertically on small screens */
+    }
+    .card.reserve-card {
+      max-width: 90%;
+    }
+  }
+</style>
 </head>
 <body>
+
+<div class="container-card">
+  <!-- Reserve Item Card -->
+  <div class="card reserve-card">
     <h1>Reserve Item</h1>
-    
-    <!-- Reserve Form -->
-    <div class="form-group">
-        <label>Patron ID:</label>
-        <input type="number" id="patron_id" placeholder="Enter Patron ID">
+    <div class="mb-3">
+      <label for="patron_id" class="form-label">Patron ID</label>
+      <input type="number" id="patron_id" class="form-control" placeholder="Enter Patron ID">
     </div>
-    
-    <div class="form-group">
-        <label>Item ID:</label>
-        <input type="number" id="item_id" placeholder="Enter Item ID">
+    <div class="mb-3">
+      <label for="item_id" class="form-label">Item ID</label>
+      <input type="number" id="item_id" class="form-control" placeholder="Enter Item ID">
     </div>
-    
-    <button onclick="reserveItem()">Reserve Item</button>
-    
-    <hr>
-    
+    <button class="btn btn-success" onclick="reserveItem()">Reserve Item</button>
+  </div>
+
+  <!-- Cancel Reservation Card -->
+  <div class="card reserve-card">
     <h2>Cancel Reservation</h2>
-    
-    <div class="form-group">
-        <label>Reservation ID:</label>
-        <input type="number" id="reservation_id" placeholder="Enter Reservation ID">
+    <div class="mb-3">
+      <label for="reservation_id" class="form-label">Reservation ID</label>
+      <input type="number" id="reservation_id" class="form-control" placeholder="Enter Reservation ID">
     </div>
-    
-    <button class="cancel-btn" onclick="cancelReservation()">Cancel Reservation</button>
-    
-    <div id="message"></div>
+    <button class="btn btn-danger" onclick="cancelReservation()">Cancel Reservation</button>
+  </div>
+</div>
 
-    <script>
-        function showMessage(message, isSuccess) {
-            const messageDiv = document.getElementById('message');
-            messageDiv.className = 'message ' + (isSuccess ? 'success' : 'error');
-            messageDiv.textContent = message;
-        }
+<!-- Message -->
+<div id="message"></div>
 
-        async function reserveItem() {
-            const patronId = document.getElementById('patron_id').value;
-            const itemId = document.getElementById('item_id').value;
-            
-            if (!patronId || !itemId) {
-                showMessage('Please enter both Patron ID and Item ID', false);
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/reserve', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        patron_id: parseInt(patronId),
-                        item_id: parseInt(itemId)
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.ok) {
-                    showMessage(data.message + ' (Reservation ID: ' + data.reservation_id + ')', true);
-                } else {
-                    showMessage('Error: ' + data.error, false);
-                }
-            } catch (error) {
-                showMessage('Error: ' + error.message, false);
-            }
-        }
+<!-- Return Button -->
+<div style="text-align:center; margin-top:16px;">
+  <button 
+    type="button" 
+    onclick="window.location.href='/'"
+    style="background:#1565c0; color:#fff; border:none; padding:8px 16px; border-radius:8px; font-weight:600; cursor:pointer;">
+    ⬅️ Return to Main
+  </button>
+</div>
 
-        async function cancelReservation() {
-            const reservationId = document.getElementById('reservation_id').value;
-            
-            if (!reservationId) {
-                showMessage('Please enter Reservation ID', false);
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/cancel_reservation', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        reservation_id: parseInt(reservationId)
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.ok) {
-                    showMessage(data.message, true);
-                } else {
-                    showMessage('Error: ' + data.error, false);
-                }
-            } catch (error) {
-                showMessage('Error: ' + error.message, false);
-            }
-        }
-    </script>
+<footer>© 2025 BookMarked | All rights reserved</footer>
+
+<script>
+  function showMessage(message, isSuccess) {
+    const messageDiv = document.getElementById('message');
+    messageDiv.textContent = message;
+    if (isSuccess) {
+      messageDiv.classList.remove('error');
+      messageDiv.classList.add('success');
+    } else {
+      messageDiv.classList.remove('success');
+      messageDiv.classList.add('error');
+    }
+  }
+
+  async function reserveItem() {
+    const patronId = document.getElementById('patron_id').value;
+    const itemId = document.getElementById('item_id').value;
+
+    if (!patronId || !itemId) {
+      showMessage('Please enter both Patron ID and Item ID', false);
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/reserve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ patron_id: parseInt(patronId), item_id: parseInt(itemId) })
+      });
+      const data = await response.json();
+      if (data.ok) {
+        showMessage(`${data.message} (Reservation ID: ${data.reservation_id})`, true);
+      } else {
+        showMessage('Error: ' + data.error, false);
+      }
+    } catch (error) {
+      showMessage('Error: ' + error.message, false);
+    }
+  }
+
+  async function cancelReservation() {
+    const reservationId = document.getElementById('reservation_id').value;
+    if (!reservationId) {
+      showMessage('Please enter Reservation ID', false);
+      return;
+    }
+    try {
+      const response = await fetch('/api/cancel_reservation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reservation_id: parseInt(reservationId) })
+      });
+      const data = await response.json();
+      if (data.ok) {
+        showMessage(data.message, true);
+      } else {
+        showMessage('Error: ' + data.error, false);
+      }
+    } catch (error) {
+      showMessage('Error: ' + error.message, false);
+    }
+  }
+</script>
 </body>
 </html>
