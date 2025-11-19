@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BookMarked · View Items</title>
+  <title>BookMarked · View & Search Items</title>
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
@@ -47,7 +47,7 @@
       box-shadow: 0 8px 25px rgba(0,0,0,0.1);
       padding: 2rem;
       width: 100%;
-      max-width: 800px; /* Wider for tables */
+      max-width: 800px;
       position: relative;
       overflow: hidden;
     }
@@ -71,12 +71,33 @@
       margin-bottom: 1.2rem;
       text-align: center;
     }
+    
+    /* Search Input Styling */
+    .search-container {
+        margin-bottom: 1.5rem;
+    }
+    .form-control {
+      background-color: var(--brand-green-light-bg);
+      border-radius: 10px;
+      border: 1px solid #e0e0e0;
+      padding: 12px;
+    }
+    .form-control:focus {
+      border-color: var(--brand-green-dark);
+      box-shadow: 0 0 0 0.2rem rgba(46,125,50,0.15);
+      background-color: #fff;
+    }
+
     .table-responsive {
         margin-top: 1rem;
+        max-height: 500px; /* Scrollable if list is long */
+        overflow-y: auto;
     }
     .table th {
         color: var(--brand-green);
         background-color: var(--brand-green-light-bg);
+        position: sticky;
+        top: 0;
     }
     footer {
       margin-top: 1.25rem;
@@ -90,11 +111,17 @@
 
   <div class="header">
     <h1>📚 BookMarked</h1>
-    <p>WPL Library Software · View Items</p>
+    <p>WPL Library Software · Library Items</p>
   </div>
 
   <div class="card data-card">
-    <h2>Library Items</h2>
+    <h2>Search & View Items</h2>
+    
+    <div class="search-container">
+        <input type="text" id="search-input" class="form-control" placeholder="🔍 Search by Item Title or ID...">
+        <div id="result-count" class="text-muted mt-2 small"></div>
+    </div>
+
     <div class="table-responsive">
       <table class="table table-striped table-hover">
         <thead>
@@ -126,38 +153,73 @@
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const itemsListBody = document.getElementById('items-list-body');
+      const searchInput = document.getElementById('search-input');
+      const resultCount = document.getElementById('result-count');
       
+      // We will store all items here so we can filter them without re-fetching
+      let allItems = [];
+
+      // Function to render the table
+      function renderTable(items) {
+        itemsListBody.innerHTML = '';
+
+        if (items.length === 0) {
+          itemsListBody.innerHTML = '<tr><td colspan="2" class="text-center">No available items found matching your search.</td></tr>';
+          resultCount.textContent = '0 items found';
+          return;
+        }
+
+        items.forEach(item => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${item.ItemID}</td>
+            <td>${item.ItemTitle}</td>
+          `;
+          itemsListBody.appendChild(row);
+        });
+        
+        resultCount.textContent = `Showing ${items.length} item(s)`;
+      }
+
+      // Function to fetch initial data
       async function fetchItems() {
-        itemsListBody.innerHTML = '<tr><td colspan="2" class="text-center">Loading...</td></tr>';
+        itemsListBody.innerHTML = '<tr><td colspan="2" class="text-center">Loading library items...</td></tr>';
         
         try {
+          // Note: Your API filters for Availability=True by default
           const response = await fetch('/api/items');
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
-          const items = await response.json();
-
-          itemsListBody.innerHTML = '';
+          allItems = await response.json();
           
-          if (items.length === 0) {
-            itemsListBody.innerHTML = '<tr><td colspan="2" class="text-center">No available items found.</td></tr>';
-            return;
-          }
-
-          items.forEach(item => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-              <td>${item.ItemID}</td>
-              <td>${item.ItemTitle}</td>
-            `;
-            itemsListBody.appendChild(row);
-          });
+          // Initial Render
+          renderTable(allItems);
 
         } catch (error) {
           console.error('Error fetching items:', error);
           itemsListBody.innerHTML = '<tr><td colspan="2" class="text-center" style="color: red;">Could not load items.</td></tr>';
         }
       }
+
+      // Event Listener for Search Input
+      searchInput.addEventListener('input', (e) => {
+        const searchTerm = e.target.value.toLowerCase().trim();
+
+        if (!searchTerm) {
+          renderTable(allItems); // If empty, show all
+          return;
+        }
+
+        const filteredItems = allItems.filter(item => {
+          // Convert ID to string to compare, and title to lowercase
+          const idMatch = String(item.ItemID).includes(searchTerm);
+          const titleMatch = (item.ItemTitle || "").toLowerCase().includes(searchTerm);
+          return idMatch || titleMatch;
+        });
+
+        renderTable(filteredItems);
+      });
 
       // Load data on page start
       fetchItems();
