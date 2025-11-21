@@ -801,17 +801,6 @@ def get_patron_reservations(patron_id: int):
     })
 
 
-#BERKER: Endpoint to trigger check expiration
-@app.route('/api/expire-reservations', methods=['POST'])
-def expire_reservations_endpoint():
-    '''Manually trigger expiration of old reservations'''
-    count = expire_old_reservations()
-    return jsonify({
-        "ok": True,
-        "message": f"Expired {count} reservation(s)",
-        "expired_count": count
-    })
-
 
 
 # Checkin demo
