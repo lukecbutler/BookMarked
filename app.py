@@ -135,37 +135,53 @@ def calculate_fine(checkout: Checkout, item: LibraryItem, return_date: date) -> 
 
 
 ##helpers for reservatio 
-def is_reservation_expired_simple(reservation: Reservation, item: LibraryItem) -> bool:
+
+def is_reservation_expired(reservation: Reservation, item: LibraryItem) -> bool:
     if not reservation or not reservation.Active:
         return False
     
-    if not item or item.Status != 'reserved':
+    if not item:
         return False
     
-    if not reservation.DateReserved:
-        return False
+    relevant_return = (
+        Return.query
+        .join(Checkout, Checkout.TransactionID == Return.TransactionID)
+        .filter(
+            Checkout.ItemID == item.ItemID,
+            Return.DateReturned >= reservation.DateReserved
+        )
+        .order_by(Return.DateReturned.desc())
+        .first()
+    )
     
-    days_since_reserved = (date.today() - reservation.DateReserved).days
+    if not relevant_return:
+        return False  # not returned yet so can't be expired
     
-    return days_since_reserved > 5
+    # calculate expiration from return date??
+    expiration_date = relevant_return.DateReturned + timedelta(days=5)
+    
+    return date.today() >= expiration_date
 
 
-def expire_old_reservations_simple():
+def expire_old_reservations():
     expired_count = 0
     
-    reserved_items = LibraryItem.query.filter(
-        LibraryItem.Status == 'reserved'
+    active_reservations = Reservation.query.filter(
+        Reservation.Active == True
     ).all()
     
-    for item in reserved_items:
-        reservation = Reservation.query.filter_by(
-            ReservedItem=item.ItemID,
-            Active=True
-        ).first()
+    for reservation in active_reservations:
+        item = LibraryItem.query.get(reservation.ReservedItem)
         
-        if reservation and is_reservation_expired_simple(reservation, item):
+        if not item:
+            continue
+        
+        if is_reservation_expired(reservation, item):
             reservation.Active = False
-            item.Status = 'available'
+            
+            if item.Status == 'reserved':
+                item.Status = 'available'
+            
             expired_count += 1
     
     if expired_count > 0:
@@ -173,12 +189,31 @@ def expire_old_reservations_simple():
     
     return expired_count
 
+
+#BERKER: this way it calculates expiration info using Return table instead of DateReserved
+# This gives patrons the full 5 days starting from when the item is actually returned,
+# not from when they reserved it. finds the Return record that happened after the reservation
+# was made, then calculates expiration as DateReturned + 5 days. If no return found yet,
+# item is still checked out so ReadyForPickup = False.
+
 def get_reservation_expiration_info(reservation: Reservation, item: LibraryItem):
     if not reservation or not item:
         return None
     
-    if item.Status == 'reserved' and reservation.DateReserved:
-        available_date = reservation.DateReserved
+    
+    relevant_return = (
+        Return.query
+        .join(Checkout, Checkout.TransactionID == Return.TransactionID)
+        .filter(
+            Checkout.ItemID == item.ItemID,
+            Return.DateReturned >= reservation.DateReserved
+        )
+        .order_by(Return.DateReturned.desc())  # needed this to get the !!latest!! teturn
+        .first()
+    )
+    
+    if relevant_return:
+        available_date = relevant_return.DateReturned
         expiration_date = available_date + timedelta(days=5)
         days_remaining = (expiration_date - date.today()).days
         
@@ -189,6 +224,7 @@ def get_reservation_expiration_info(reservation: Reservation, item: LibraryItem)
             "ReadyForPickup": True
         }
     
+    # No return yet
     return {
         "AvailableForPickupDate": None,
         "ExpirationDate": None,
@@ -360,7 +396,7 @@ def api_get_item(item_id: int):
 
     if active_res:
         # BERKER: Check if expired
-        if is_reservation_expired_simple(active_res, item):
+        if is_reservation_expired(active_res, item):
             active_res.Active = False
             item.Status = 'available'
             database.session.commit()
@@ -683,7 +719,7 @@ def get_reservation_status(reservation_id: int):
     
     item = LibraryItem.query.get(reservation.ReservedItem)
     
-    if is_reservation_expired_simple(reservation, item):
+    if is_reservation_expired(reservation, item):
         reservation.Active = False
         if item and item.Status == 'reserved':
             item.Status = 'available'
@@ -705,7 +741,7 @@ def get_reservation_status(reservation_id: int):
         "AvailableForPickupDate": exp_info["AvailableForPickupDate"],
         "ExpirationDate": exp_info["ExpirationDate"],
         "DaysRemaining": exp_info["DaysRemaining"],
-        "Expired": is_reservation_expired_simple(reservation, item)
+        "Expired": is_reservation_expired(reservation, item)
     })
 
 
@@ -716,7 +752,7 @@ def get_patron_reservations(patron_id: int):
     if not patron:
         return jsonify({"ok": False, "error": "Patron not found"}), 404
     
-    expire_old_reservations_simple()
+    expire_old_reservations()
     
     reservations = Reservation.query.filter_by(
         ReservingPatron=patron_id,
@@ -752,7 +788,7 @@ def get_patron_reservations(patron_id: int):
 @app.route('/api/expire-reservations', methods=['POST'])
 def expire_reservations_endpoint():
     '''Manually trigger expiration of old reservations'''
-    count = expire_old_reservations_simple()
+    count = expire_old_reservations()
     return jsonify({
         "ok": True,
         "message": f"Expired {count} reservation(s)",
@@ -894,7 +930,7 @@ def checkout_basic() -> jsonify:
         })
 
     # BERKER: Auto expire old reservations before checking out
-    expire_old_reservations_simple()
+    expire_old_reservations()
 
 
     # BERKER: checking if patron has fines
