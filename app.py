@@ -150,7 +150,7 @@ def is_reservation_expired(reservation: Reservation, item: LibraryItem) -> bool:
             Checkout.ItemID == item.ItemID,
             Return.DateReturned >= reservation.DateReserved
         )
-        .order_by(Return.DateReturned.desc())
+        .order_by(Return.DateReturned.asc())
         .first()
     )
     
@@ -160,7 +160,7 @@ def is_reservation_expired(reservation: Reservation, item: LibraryItem) -> bool:
     # calculate expiration from return date??
     expiration_date = relevant_return.DateReturned + timedelta(days=5)
     
-    return date.today() >= expiration_date
+    return date.today() > expiration_date
 
 
 def expire_old_reservations():
@@ -180,7 +180,7 @@ def expire_old_reservations():
             reservation.Active = False
             
             if item.Status == 'reserved':
-                item.Status = 'available'
+                item.Status = 'checked in'
             
             expired_count += 1
     
@@ -200,6 +200,23 @@ def get_reservation_expiration_info(reservation: Reservation, item: LibraryItem)
     if not reservation or not item:
         return None
     
+    active_checkout = (
+        Checkout.query
+        .outerjoin(Return, Return.TransactionID == Checkout.TransactionID)
+        .filter(
+            Checkout.ItemID == item.ItemID,
+            Return.TransactionID.is_(None)  # checking to see ""no return = still checked out
+        )
+        .first()
+    )
+    
+    if active_checkout:
+        return {
+            "AvailableForPickupDate": None,
+            "ExpirationDate": None,
+            "DaysRemaining": None,
+            "ReadyForPickup": False
+        }
     
     relevant_return = (
         Return.query
